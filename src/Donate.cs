@@ -24,29 +24,29 @@ namespace DiskMate
         private DonateDialog()
         {
             bool zh = I18n.Lang.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
-            int w = 560;
+            int w = Theme.P(560);
 
             imgAlipay = LoadImage(AlipayRes);
             imgWeixin = LoadImage(WeixinRes);
             bool hasQr = zh && imgAlipay != null && imgWeixin != null;
 
-            int h = hasQr ? 468 : 300;
+            int h = hasQr ? Theme.P(468) : Theme.P(300);
             ClientSize = new Size(w, h);
             Text = I18n.T("donate.title");
 
             var title = new Label();
             title.AutoSize = false;
-            title.Location = new Point(30, 24);
-            title.Size = new Size(w - 60, 30);
-            title.Font = new Font(Theme.Family, 14f, FontStyle.Bold);
+            title.Location = new Point(Theme.P(30), Theme.P(24));
+            title.Size = new Size(w - Theme.P(60), Theme.P(30));
+            title.Font = Theme.F(14f, FontStyle.Bold);
             title.ForeColor = Theme.Text;
             title.Text = I18n.T("donate.title");
             Controls.Add(title);
 
             var sub = new Label();
             sub.AutoSize = false;
-            sub.Location = new Point(30, 58);
-            sub.Size = new Size(w - 60, hasQr ? 40 : 56);
+            sub.Location = new Point(Theme.P(30), Theme.P(58));
+            sub.Size = new Size(w - Theme.P(60), hasQr ? Theme.P(40) : Theme.P(56));
             sub.ForeColor = Theme.TextSub;
             sub.Text = I18n.T("donate.sub");
             Controls.Add(sub);
@@ -54,19 +54,19 @@ namespace DiskMate
             if (hasQr)
             {
                 // 两张收款码并排居中：左支付宝（1708x2560），右微信（828x1124）
-                const int imgH = 220;
+                int imgH = Theme.P(220);
                 int wA = (int)Math.Round(imgH * 1708.0 / 2560.0);
                 int wW = (int)Math.Round(imgH * 828.0 / 1124.0);
-                const int gap = 48;
+                int gap = Theme.P(48);
                 int left = (w - (wA + gap + wW)) / 2;
 
-                AddQr(imgAlipay, new Rectangle(left, 104, wA, imgH), I18n.T("donate.alipay"), AlipayRes);
-                AddQr(imgWeixin, new Rectangle(left + wA + gap, 104, wW, imgH), I18n.T("donate.weixin"), WeixinRes);
+                AddQr(imgAlipay, new Rectangle(left, Theme.P(104), wA, imgH), I18n.T("donate.alipay"), AlipayRes);
+                AddQr(imgWeixin, new Rectangle(left + wA + gap, Theme.P(104), wW, imgH), I18n.T("donate.weixin"), WeixinRes);
 
                 var hint = new Label();
                 hint.AutoSize = false;
-                hint.Location = new Point(30, 356);
-                hint.Size = new Size(w - 60, 18);
+                hint.Location = new Point(Theme.P(30), Theme.P(356));
+                hint.Size = new Size(w - Theme.P(60), Theme.P(18));
                 hint.TextAlign = ContentAlignment.MiddleCenter;
                 hint.ForeColor = Theme.TextFaint;
                 hint.Font = Theme.Small;
@@ -77,16 +77,16 @@ namespace DiskMate
             var btnClose = new FlatButton();
             btnClose.Kind = BtnKind.Secondary;
             btnClose.Text = I18n.T("donate.close");
-            btnClose.Size = new Size(96, 38);
-            btnClose.Location = new Point(w - 30 - 96, h - 62);
+            btnClose.Size = new Size(Theme.P(96), Theme.P(38));
+            btnClose.Location = new Point(w - Theme.P(30) - Theme.P(96), h - Theme.P(62));
             btnClose.Click += delegate { Close(); };
             Controls.Add(btnClose);
 
             var btnKofi = new FlatButton();
             btnKofi.Kind = hasQr ? BtnKind.Ghost : BtnKind.Primary;
             btnKofi.Text = I18n.T("donate.kofi");
-            btnKofi.Size = new Size(hasQr ? 178 : 200, 38);
-            btnKofi.Location = new Point(30, h - 62);
+            btnKofi.Size = new Size(hasQr ? Theme.P(178) : Theme.P(200), Theme.P(38));
+            btnKofi.Location = new Point(Theme.P(30), h - Theme.P(62));
             btnKofi.Click += delegate { OpenUrl(KofiUrl); };
             Controls.Add(btnKofi);
 
@@ -94,8 +94,8 @@ namespace DiskMate
             {
                 var tip = new Label();
                 tip.AutoSize = false;
-                tip.Location = new Point(30, 132);
-                tip.Size = new Size(w - 60, 84);
+                tip.Location = new Point(Theme.P(30), Theme.P(132));
+                tip.Size = new Size(w - Theme.P(60), Theme.P(84));
                 tip.ForeColor = Theme.TextFaint;
                 tip.Font = Theme.Small;
                 tip.Text = I18n.T("donate.kofiHint") + Environment.NewLine + KofiUrl;
@@ -114,8 +114,8 @@ namespace DiskMate
 
             var lbl = new Label();
             lbl.AutoSize = false;
-            lbl.Location = new Point(box.X, box.Bottom + 6);
-            lbl.Size = new Size(box.Width, 18);
+            lbl.Location = new Point(box.X, box.Bottom + Theme.P(6));
+            lbl.Size = new Size(box.Width, Theme.P(18));
             lbl.TextAlign = ContentAlignment.MiddleCenter;
             lbl.ForeColor = Theme.TextSub;
             lbl.Font = Theme.Small;
@@ -132,21 +132,30 @@ namespace DiskMate
         /// <summary>自检用：把弹窗渲染成 PNG。</summary>
         internal static void RenderTo(string path)
         {
-            using (var d = new DonateDialog())
+            try
             {
-                d.Show();
-                Application.DoEvents();
-                d.Refresh();
-                Application.DoEvents();
-                using (var bmp = new Bitmap(d.Width, d.Height))
+                using (var d = new DonateDialog())
                 {
-                    d.DrawToBitmap(bmp, new Rectangle(0, 0, d.Width, d.Height));
-                    bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                    d.Show();
+                    Application.DoEvents();
+                    d.Refresh();
+                    Application.DoEvents();
+                    string dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    using (var bmp = new Bitmap(d.Width, d.Height))
+                    {
+                        d.DrawToBitmap(bmp, new Rectangle(0, 0, d.Width, d.Height));
+                        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    d.Close();
                 }
-                d.Close();
+                Console.WriteLine("ok");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("render failed: " + ex.Message);
             }
         }
-
         // ------------------------------------------------------------ resources
         private static byte[] ResourceBytes(string name)
         {
@@ -221,7 +230,7 @@ namespace DiskMate
             g.Clear(Parent != null ? Parent.BackColor : Theme.Surface);
             if (Image == null) return;
 
-            var box = new Rectangle(0, 0, Width, Height);
+            var box = new Rectangle(Theme.P(0), Theme.P(0), Width, Height);
             using (GraphicsPath p = Theme.Round(box, 10))
             {
                 using (var b = new SolidBrush(Color.White)) g.FillPath(b, p);

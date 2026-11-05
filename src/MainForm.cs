@@ -99,13 +99,13 @@ namespace DiskMate
             BackColor = Theme.Bg;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
             catch { }
-            ClientSize = new Size(1120, 760);
-            MinimumSize = new Size(1040, 700);
+            Size winSize = Theme.WindowSize(1120, 760);
+            ClientSize = winSize;
+            MinimumSize = new Size(Math.Min(Theme.P(1040), winSize.Width), Math.Min(Theme.P(700), winSize.Height));
             StartPosition = FormStartPosition.CenterScreen;
             DoubleBuffered = true;
             KeyPreview = true;
-            AutoScaleMode = AutoScaleMode.Dpi;
-            AutoScaleDimensions = new SizeF(96f, 96f);
+            AutoScaleMode = AutoScaleMode.None;   // 自己按 Theme.S 缩放，避免 WinForms 二次放大
 
             BuildShell();
             BuildCleanPage();
@@ -145,7 +145,7 @@ namespace DiskMate
         {
             sidebar = new Panel();
             sidebar.Dock = DockStyle.Left;
-            sidebar.Width = 216;
+            sidebar.Width = Theme.P(216);
             sidebar.BackColor = Theme.Sidebar;
             sidebar.Paint += delegate(object s, PaintEventArgs e) { PaintSidebar(e.Graphics); };
             sidebar.Resize += delegate { LayoutSidebar(); };
@@ -164,7 +164,7 @@ namespace DiskMate
 
             btnLang = new FlatButton();
             btnLang.Kind = BtnKind.Secondary;
-            btnLang.Size = new Size(184, 34);
+            btnLang.Size = new Size(Theme.P(184), Theme.P(34));
             btnLang.Font = Theme.Small;
             btnLang.Text = LangText();
             btnLang.Click += delegate { ShowLangMenu(); };
@@ -172,7 +172,7 @@ namespace DiskMate
 
             btnUpdate = new FlatButton();
             btnUpdate.Kind = BtnKind.Ghost;
-            btnUpdate.Size = new Size(184, 28);
+            btnUpdate.Size = new Size(Theme.P(184), Theme.P(28));
             btnUpdate.Font = Theme.Small;
             btnUpdate.Text = I18n.F("update.btn", AppInfo.Version);
             btnUpdate.Click += delegate
@@ -184,7 +184,7 @@ namespace DiskMate
 
             btnDonate = new FlatButton();
             btnDonate.Kind = BtnKind.Ghost;
-            btnDonate.Size = new Size(184, 26);
+            btnDonate.Size = new Size(Theme.P(184), Theme.P(26));
             btnDonate.Font = Theme.Small;
             btnDonate.Text = I18n.T("donate.btn");
             btnDonate.Click += delegate { DonateDialog.Show(this); };
@@ -197,7 +197,7 @@ namespace DiskMate
 
             lblAdmin = new Label();
             lblAdmin.AutoSize = false;
-            lblAdmin.Height = 20;
+            lblAdmin.Height = Theme.P(20);
             lblAdmin.ForeColor = Theme.TextSub;
             lblAdmin.Font = Theme.Small;
             lblAdmin.Text = IsAdmin() ? I18n.T("admin.yes") : I18n.T("admin.no");
@@ -205,7 +205,7 @@ namespace DiskMate
 
             lblVersion = new Label();
             lblVersion.AutoSize = false;
-            lblVersion.Height = 16;
+            lblVersion.Height = Theme.P(16);
             lblVersion.ForeColor = Theme.TextFaint;
             lblVersion.Font = Theme.Small;
             lblVersion.Text = "DiskMate " + AppInfo.Version;
@@ -223,8 +223,8 @@ namespace DiskMate
 
             lblPageTitle = new Label();
             lblPageTitle.AutoSize = false;
-            lblPageTitle.Location = new Point(26, 18);
-            lblPageTitle.Size = new Size(520, 32);
+            lblPageTitle.Location = new Point(Theme.P(26), Theme.P(18));
+            lblPageTitle.Size = new Size(Theme.P(520), Theme.P(32));
             lblPageTitle.Font = Theme.H1;
             lblPageTitle.ForeColor = Theme.Text;
             lblPageTitle.Text = I18n.T("nav.clean");
@@ -232,24 +232,24 @@ namespace DiskMate
 
             lblPageSub = new Label();
             lblPageSub.AutoSize = false;
-            lblPageSub.Location = new Point(28, 50);
-            lblPageSub.Size = new Size(620, 20);
+            lblPageSub.Location = new Point(Theme.P(28), Theme.P(50));
+            lblPageSub.Size = new Size(Theme.P(620), Theme.P(20));
             lblPageSub.Font = Theme.Small;
             lblPageSub.ForeColor = Theme.TextSub;
             lblPageSub.Text = "";
             topbar.Controls.Add(lblPageSub);
 
             rightBox = new FlowLayoutPanel();            rightBox.Dock = DockStyle.Right;
-            rightBox.Width = 340;
+            rightBox.Width = Theme.P(340);
             rightBox.FlowDirection = FlowDirection.RightToLeft;
             rightBox.WrapContents = false;
             rightBox.BackColor = Theme.Bg;
-            rightBox.Padding = new Padding(0, 28, 26, 0);
+            rightBox.Padding = new Padding(Theme.P(0), Theme.P(28), Theme.P(26), Theme.P(0));
             topbar.Controls.Add(rightBox);
 
             chipAdmin = new Badge();
-            chipAdmin.Size = new Size(88, 24);
-            chipAdmin.Margin = new Padding(10, 0, 0, 0);
+            chipAdmin.Size = new Size(Theme.P(88), Theme.P(24));
+            chipAdmin.Margin = new Padding(Theme.P(10), Theme.P(0), Theme.P(0), Theme.P(0));
             chipAdmin.Font = Theme.Small;
             rightBox.Controls.Add(chipAdmin);
 
@@ -257,8 +257,8 @@ namespace DiskMate
             btnRescan.Kind = BtnKind.Secondary;
             Txt(btnRescan, "btn.rescan");
             btnRescan.Icon = "refresh";
-            btnRescan.Size = new Size(118, 34);
-            btnRescan.Margin = new Padding(10, 0, 0, 0);
+            btnRescan.Size = new Size(Theme.P(118), Theme.P(34));
+            btnRescan.Margin = new Padding(Theme.P(10), Theme.P(0), Theme.P(0), Theme.P(0));
             btnRescan.Visible = false;
             btnRescan.Click += delegate { BeginScan(); };
             rightBox.Controls.Add(btnRescan);
@@ -267,26 +267,26 @@ namespace DiskMate
             lblLastScan.AutoSize = true;
             lblLastScan.ForeColor = Theme.TextFaint;
             lblLastScan.Font = Theme.Small;
-            lblLastScan.Margin = new Padding(0, 4, 0, 0);
+            lblLastScan.Margin = new Padding(Theme.P(0), Theme.P(4), Theme.P(0), Theme.P(0));
             Txt(lblLastScan, "lastScan.none");
             rightBox.Controls.Add(lblLastScan);
 
             bannerHost = new Panel();
-            bannerHost.Height = 0;
+            bannerHost.Height = Theme.P(0);
             bannerHost.Visible = false;
             bannerHost.BackColor = Theme.Bg;
-            bannerHost.Padding = new Padding(24, 0, 24, 12);
+            bannerHost.Padding = new Padding(Theme.P(24), Theme.P(0), Theme.P(24), Theme.P(12));
             mainHost.Controls.Add(bannerHost);
 
             banner = new Banner();
             banner.Dock = DockStyle.Fill;
-            banner.Height = 48;
+            banner.Height = Theme.P(48);
             banner.Dismissed += delegate { bannerHost.Visible = false; LayoutMain(); };
             bannerHost.Controls.Add(banner);
 
             content = new Panel();
             content.BackColor = Theme.Bg;
-            content.Padding = new Padding(24, 0, 24, 16);
+            content.Padding = new Padding(Theme.P(24), Theme.P(0), Theme.P(24), Theme.P(16));
             mainHost.Controls.Add(content);
 
             pageClean = new Panel(); pageClean.Dock = DockStyle.Fill; pageClean.BackColor = Theme.Bg; pageClean.Visible = false; content.Controls.Add(pageClean);
@@ -304,17 +304,17 @@ namespace DiskMate
             if (topbar == null || content == null || mainHost == null) return;
             int w = mainHost.Width;
             int h = mainHost.Height;
-            int y = 0;
-            topbar.SetBounds(0, y, w, 78); y += 78;
+            int y = Theme.P(0);
+            topbar.SetBounds(Theme.P(0), y, w, Theme.P(78)); y += Theme.P(78);
             if (rightBox != null && lblPageSub != null)
             {
-                int subW = Math.Max(160, w - rightBox.Width - 56);
+                int subW = Math.Max(Theme.P(160), w - rightBox.Width - Theme.P(56));
                 lblPageSub.Width = subW;
                 lblPageTitle.Width = subW;
             }
-            int bh = bannerHost.Visible ? 60 : 0;
-            bannerHost.SetBounds(0, y, w, bh); y += bh;
-            content.SetBounds(0, y, w, Math.Max(0, h - y));
+            int bh = bannerHost.Visible ? Theme.P(60) : 0;
+            bannerHost.SetBounds(Theme.P(0), y, w, bh); y += bh;
+            content.SetBounds(Theme.P(0), y, w, Math.Max(Theme.P(0), h - y));
         }
 
         private NavItem MakeNav(string text, string icon)
@@ -341,40 +341,40 @@ namespace DiskMate
             if (sidebar == null || navClean == null || navBig == null || navLog == null) return;
             if (dmC == null || dmD == null || lblAdmin == null || lblVersion == null) return;
 
-            int y = 98;
+            int y = Theme.P(98);
             NavItem[] navs = { navClean, navBig, navLog };
             foreach (NavItem n in navs)
             {
-                n.Location = new Point(0, y);
+                n.Location = new Point(Theme.P(0), y);
                 n.Width = sidebar.Width;
-                y += 46;
+                y += Theme.P(46);
             }
 
             if (btnLang != null)
             {
-                btnLang.Width = sidebar.Width - 36;
-                btnLang.Location = new Point(18, y + 6);
+                btnLang.Width = sidebar.Width - Theme.P(36);
+                btnLang.Location = new Point(Theme.P(18), y + Theme.P(6));
             }
             if (btnUpdate != null)
             {
-                btnUpdate.Width = sidebar.Width - 36;
-                btnUpdate.Location = new Point(18, y + 44);
+                btnUpdate.Width = sidebar.Width - Theme.P(36);
+                btnUpdate.Location = new Point(Theme.P(18), y + Theme.P(44));
             }
             if (btnDonate != null)
             {
-                btnDonate.Width = sidebar.Width - 36;
-                btnDonate.Location = new Point(18, y + 78);
+                btnDonate.Width = sidebar.Width - Theme.P(36);
+                btnDonate.Location = new Point(Theme.P(18), y + Theme.P(78));
             }
 
-            int bottom = sidebar.Height - 18;
-            lblVersion.Location = new Point(22, bottom - 15);
-            lblVersion.Width = sidebar.Width - 40;
-            lblAdmin.Location = new Point(22, bottom - 40);
-            lblAdmin.Width = sidebar.Width - 40;
-            dmD.Location = new Point(16, lblAdmin.Top - 74);
-            dmD.Width = sidebar.Width - 32;
-            dmC.Location = new Point(16, dmD.Top - 64);
-            dmC.Width = sidebar.Width - 32;
+            int bottom = sidebar.Height - Theme.P(18);
+            lblVersion.Location = new Point(Theme.P(22), bottom - Theme.P(15));
+            lblVersion.Width = sidebar.Width - Theme.P(40);
+            lblAdmin.Location = new Point(Theme.P(22), bottom - Theme.P(40));
+            lblAdmin.Width = sidebar.Width - Theme.P(40);
+            dmD.Location = new Point(Theme.P(16), lblAdmin.Top - Theme.P(74));
+            dmD.Width = sidebar.Width - Theme.P(32);
+            dmC.Location = new Point(Theme.P(16), dmD.Top - Theme.P(64));
+            dmC.Width = sidebar.Width - Theme.P(32);
             sidebar.Invalidate();
         }
 
@@ -385,15 +385,15 @@ namespace DiskMate
             using (var pen = new Pen(Theme.Border))
                 g.DrawLine(pen, sidebar.Width - 1, 0, sidebar.Width - 1, sidebar.Height);
 
-            var logo = new Rectangle(20, 24, 34, 34);
-            Logo.Draw(g, new RectangleF(logo.X, logo.Y, logo.Width, logo.Height), 10);
+            var logo = new Rectangle(Theme.P(20), Theme.P(24), Theme.P(34), Theme.P(34));
+            Logo.Draw(g, new RectangleF(logo.X, logo.Y, logo.Width, logo.Height), Theme.P(10));
 
-            TextRenderer.DrawText(g, "DiskMate", new Font(Theme.Family, 12.5f, FontStyle.Bold),
-                new Rectangle(62, 26, 140, 22), Theme.Text, Theme.LeftMid);
-            TextRenderer.DrawText(g, I18n.T("app.tagline"), Theme.Small, new Rectangle(63, 46, 146, 18), Theme.TextFaint, Theme.LeftMid);
+            TextRenderer.DrawText(g, "DiskMate", Theme.F(12.5f, FontStyle.Bold),
+                new Rectangle(Theme.P(62), Theme.P(26), Theme.P(140), Theme.P(22)), Theme.Text, Theme.LeftMid);
+            TextRenderer.DrawText(g, I18n.T("app.tagline"), Theme.Small, new Rectangle(Theme.P(63), Theme.P(46), Theme.P(146), Theme.P(18)), Theme.TextFaint, Theme.LeftMid);
 
             using (var pen = new Pen(Theme.Border))
-                g.DrawLine(pen, 18, dmC.Top - 14, sidebar.Width - 18, dmC.Top - 14);
+                g.DrawLine(pen, Theme.P(18), dmC.Top - Theme.P(14), sidebar.Width - Theme.P(18), dmC.Top - Theme.P(14));
         }
 
         private void ShowPage(int idx)
@@ -496,7 +496,7 @@ namespace DiskMate
                 };
                 menu.Items.Add(item);
             }
-            menu.Show(btnLang, new Point(0, btnLang.Height + 4));
+            menu.Show(btnLang, new Point(Theme.P(0), btnLang.Height + Theme.P(4)));
         }
 
         /// <summary>语言切换后重放所有文本、列表与详情。</summary>
@@ -1059,7 +1059,7 @@ namespace DiskMate
 
         private void UpdateSelection()
         {
-            int n = 0;
+            int n = Theme.P(0);
             long size = 0;
             foreach (CleanItem it in all)
             {
@@ -1120,7 +1120,7 @@ namespace DiskMate
             var sb = new StringBuilder();
             if (current.Targets != null)
             {
-                int shown = 0;
+                int shown = Theme.P(0);
                 foreach (string t in current.Targets)
                 {
                     if (shown >= 3) { sb.AppendLine("…"); break; }
@@ -1366,6 +1366,55 @@ namespace DiskMate
             }
         }
 
+        /// <summary>自检：所有可见控件必须在父容器内，文字不得溢出控件宽度（DPI 缩放回归用）。</summary>
+        public string TestTextFit()
+        {
+            var sb = new StringBuilder();
+            int bad = 0;
+            List<Control> all = new List<Control>();
+            Collect(this, all);
+            foreach (Control c in all)
+            {
+                if (!c.Visible || c.Parent == null) continue;
+                Rectangle r = c.Bounds;
+                Rectangle pc = c.Parent.ClientRectangle;
+                bool allowOverflow = c.Parent is ScrollableControl && ((ScrollableControl)c.Parent).AutoScroll;
+                if (!allowOverflow && (r.Right > pc.Width + Theme.P(2) || r.Bottom > pc.Height + Theme.P(2) || r.Left < -Theme.P(2) || r.Top < -Theme.P(2)))
+                {
+                    sb.AppendLine("  CLIP " + Name(c) + " " + r + " 超出父容器 " + pc);
+                    bad++;
+                }
+                string txt = c.Text;
+                if (string.IsNullOrEmpty(txt)) continue;
+                if (c is TextBox || c is ListView || c is TreeView || c is ComboBox) continue;
+                if (c.Height >= c.Font.Height * 2) continue;   // 允许多行换行的标签
+                if (c.AutoSize) continue;                       // 自适应尺寸不会被裁
+                Size need = TextRenderer.MeasureText(txt, c.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+                if (need.Width > c.Width + Theme.P(2))
+                {
+                    sb.AppendLine("  TEXT " + Name(c) + " 文字需 " + need.Width + "px，控件宽 " + c.Width + "px：\"" + txt + "\"");
+                    bad++;
+                }
+            }
+            sb.AppendLine("  issues=" + bad + "  controls=" + all.Count);
+            return sb.ToString();
+        }
+
+        private static void Collect(Control root, List<Control> into)
+        {
+            foreach (Control c in root.Controls)
+            {
+                into.Add(c);
+                if (c.Controls.Count > 0) Collect(c, into);
+            }
+        }
+
+        private static string Name(Control c)
+        {
+            string n = c.GetType().Name;
+            if (!string.IsNullOrEmpty(c.Name)) n += "#" + c.Name;
+            return n;
+        }
         // ============================================================ selftest
         public List<CleanItem> SelfTestScan()
         {

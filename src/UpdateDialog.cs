@@ -18,23 +18,23 @@ namespace DiskMate
         private UpdateDialog(UpdateInfo i)
         {
             info = i;
-            int w = 520;
-            ClientSize = new Size(w, 320);
+            int w = Theme.P(520);
+            ClientSize = new Size(w, Theme.P(320));
             Text = I18n.F("update.newTitle", info.Version);
 
             var title = new Label();
             title.AutoSize = false;
-            title.Location = new Point(30, 26);
-            title.Size = new Size(w - 60, 30);
-            title.Font = new Font(Theme.Family, 14f, FontStyle.Bold);
+            title.Location = new Point(Theme.P(30), Theme.P(26));
+            title.Size = new Size(w - Theme.P(60), Theme.P(30));
+            title.Font = Theme.F(14f, FontStyle.Bold);
             title.ForeColor = Theme.Text;
             title.Text = I18n.F("update.newTitle", info.Version);
             Controls.Add(title);
 
             var sub = new Label();
             sub.AutoSize = false;
-            sub.Location = new Point(30, 60);
-            sub.Size = new Size(w - 60, 20);
+            sub.Location = new Point(Theme.P(30), Theme.P(60));
+            sub.Size = new Size(w - Theme.P(60), Theme.P(20));
             sub.ForeColor = Theme.TextSub;
             sub.Font = Theme.Small;
             sub.Text = I18n.F("update.currentTo", AppInfo.Version, info.Version);
@@ -42,8 +42,8 @@ namespace DiskMate
 
             var cap = new Label();
             cap.AutoSize = false;
-            cap.Location = new Point(30, 94);
-            cap.Size = new Size(w - 60, 18);
+            cap.Location = new Point(Theme.P(30), Theme.P(94));
+            cap.Size = new Size(w - Theme.P(60), Theme.P(18));
             cap.ForeColor = Theme.TextFaint;
             cap.Font = Theme.Small;
             cap.Text = I18n.T("update.notes");
@@ -57,39 +57,39 @@ namespace DiskMate
             notes.BackColor = Theme.Bg;
             notes.ForeColor = Theme.TextSub;
             notes.Font = Theme.Base;
-            notes.Location = new Point(30, 116);
-            notes.Size = new Size(w - 60, 108);
+            notes.Location = new Point(Theme.P(30), Theme.P(116));
+            notes.Size = new Size(w - Theme.P(60), Theme.P(108));
             notes.Text = string.IsNullOrEmpty(info.Notes) ? "-" : info.Notes;
             Controls.Add(notes);
 
             lblStatus = new Label();
             lblStatus.AutoSize = false;
-            lblStatus.Location = new Point(30, 232);
-            lblStatus.Size = new Size(w - 60, 20);
+            lblStatus.Location = new Point(Theme.P(30), Theme.P(232));
+            lblStatus.Size = new Size(w - Theme.P(60), Theme.P(20));
             lblStatus.ForeColor = Theme.TextFaint;
             lblStatus.Font = Theme.Small;
             lblStatus.Text = "";
             Controls.Add(lblStatus);
 
             bar = new ThinProgress();
-            bar.Location = new Point(30, 254);
-            bar.Size = new Size(w - 60, 6);
+            bar.Location = new Point(Theme.P(30), Theme.P(254));
+            bar.Size = new Size(w - Theme.P(60), Theme.P(6));
             bar.Visible = false;
             Controls.Add(bar);
 
             btnLater = new FlatButton();
             btnLater.Kind = BtnKind.Secondary;
             btnLater.Text = I18n.T("update.later");
-            btnLater.Size = new Size(96, 38);
-            btnLater.Location = new Point(w - 30 - 160 - 12 - 96, 268);
+            btnLater.Size = new Size(Theme.P(96), Theme.P(38));
+            btnLater.Location = new Point(w - Theme.P(30) - Theme.P(160) - Theme.P(12) - Theme.P(96), Theme.P(268));
             btnLater.Click += delegate { Close(); };
             Controls.Add(btnLater);
 
             btnInstall = new FlatButton();
             btnInstall.Kind = BtnKind.Primary;
             btnInstall.Text = I18n.T("update.install");
-            btnInstall.Size = new Size(160, 38);
-            btnInstall.Location = new Point(w - 30 - 160, 268);
+            btnInstall.Size = new Size(Theme.P(160), Theme.P(38));
+            btnInstall.Location = new Point(w - Theme.P(30) - Theme.P(160), Theme.P(268));
             btnInstall.Click += delegate { StartDownload(); };
             Controls.Add(btnInstall);
         }
@@ -105,7 +105,7 @@ namespace DiskMate
                 Application.DoEvents();
                 using (var bmp = new Bitmap(d.Width, d.Height))
                 {
-                    d.DrawToBitmap(bmp, new Rectangle(0, 0, d.Width, d.Height));
+                    d.DrawToBitmap(bmp, new Rectangle(Theme.P(0), Theme.P(0), d.Width, d.Height));
                     bmp.Save(path, ImageFormat.Png);
                 }
                 d.Close();
@@ -126,7 +126,7 @@ namespace DiskMate
             btnInstall.Invalidate();
             btnLater.Invalidate();
             bar.Visible = true;
-            bar.Value = 0;
+            bar.Value = Theme.P(0);
             lblStatus.Text = I18n.T("update.downloading0");
 
             Task.Factory.StartNew(delegate
@@ -135,7 +135,7 @@ namespace DiskMate
                 string path = UpdateService.Download(info,
                     delegate(long done, long total)
                     {
-                        if (total <= 0) return;
+                        if (total <= Theme.P(0)) return;
                         int pct = (int)(done * 100L / total);
                         Ui(delegate
                         {
@@ -150,7 +150,7 @@ namespace DiskMate
                     return;
                 }
 
-                Ui(delegate { lblStatus.Text = I18n.T("update.verifying"); bar.Value = 1; });
+                Ui(delegate { lblStatus.Text = I18n.T("update.verifying"); bar.Value = Theme.P(1); });
                 string verr;
                 if (!UpdateService.Verify(path, info, out verr))
                 {

@@ -18,7 +18,7 @@ namespace DiskMate
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Theme.Surface;
-            Size = new Size(58, 58);
+            Size = new Size(Theme.P(58), Theme.P(58));
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -26,7 +26,7 @@ namespace DiskMate
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Parent != null ? Parent.BackColor : Theme.Surface);
-            Logo.Draw(g, new RectangleF(0, 0, Width, Height), 17);
+            Logo.Draw(g, new RectangleF(0, 0, Width, Height), Theme.P(17));
         }
     }
 
@@ -54,23 +54,23 @@ namespace DiskMate
         private void BuildWelcome()
         {
             var hero = new CardPanel();
-            hero.Size = new Size(700, 372);
+            hero.Size = new Size(Theme.P(700), Theme.P(372));
             hero.Radius = 18;
             pageWelcome.Controls.Add(hero);
             pageWelcome.Resize += delegate
             {
-                hero.Location = new Point(Math.Max(0, (pageWelcome.Width - hero.Width) / 2),
-                    Math.Max(20, (pageWelcome.Height - hero.Height) / 2));
+                hero.Location = new Point(Math.Max(Theme.P(0), (pageWelcome.Width - hero.Width) / 2),
+                    Math.Max(Theme.P(20), (pageWelcome.Height - hero.Height) / 2));
             };
 
             var logo = new HeroLogo();
-            logo.Location = new Point((hero.Width - 58) / 2, 34);
+            logo.Location = new Point((hero.Width - Theme.P(58)) / 2, Theme.P(34));
             hero.Controls.Add(logo);
 
             var title = new Label();
             title.AutoSize = false;
-            title.Location = new Point(0, 104);
-            title.Size = new Size(hero.Width, 36);
+            title.Location = new Point(Theme.P(0), Theme.P(104));
+            title.Size = new Size(hero.Width, Theme.P(36));
             title.TextAlign = ContentAlignment.MiddleCenter;
             title.Font = Theme.Hero;
             title.ForeColor = Theme.Text;
@@ -79,8 +79,8 @@ namespace DiskMate
 
             var desc = new Label();
             desc.AutoSize = false;
-            desc.Location = new Point(40, 146);
-            desc.Size = new Size(hero.Width - 80, 46);
+            desc.Location = new Point(Theme.P(40), Theme.P(146));
+            desc.Size = new Size(hero.Width - Theme.P(80), Theme.P(46));
             desc.TextAlign = ContentAlignment.TopCenter;
             desc.ForeColor = Theme.TextSub;
             Txt(desc, "welcome.desc");
@@ -88,8 +88,8 @@ namespace DiskMate
 
             var feats = new Label();
             feats.AutoSize = false;
-            feats.Location = new Point(0, 202);
-            feats.Size = new Size(hero.Width, 24);
+            feats.Location = new Point(Theme.P(0), Theme.P(202));
+            feats.Size = new Size(hero.Width, Theme.P(24));
             feats.TextAlign = ContentAlignment.MiddleCenter;
             feats.Font = Theme.Small;
             feats.ForeColor = Theme.Primary;
@@ -99,17 +99,17 @@ namespace DiskMate
             btnStart = new FlatButton();
             btnStart.Kind = BtnKind.Primary;
             Txt(btnStart, "welcome.start");
-            btnStart.Size = new Size(184, 46);
+            btnStart.Size = new Size(Theme.P(184), Theme.P(46));
             btnStart.Radius = 11;
-            btnStart.Font = new Font(Theme.Family, 11f, FontStyle.Bold);
-            btnStart.Location = new Point((hero.Width - 184) / 2, 246);
+            btnStart.Font = Theme.F(11f, FontStyle.Bold);
+            btnStart.Location = new Point((hero.Width - Theme.P(184)) / 2, Theme.P(246));
             btnStart.Click += delegate { BeginScan(); };
             hero.Controls.Add(btnStart);
 
             var hint = new Label();
             hint.AutoSize = false;
-            hint.Location = new Point(0, 306);
-            hint.Size = new Size(hero.Width, 22);
+            hint.Location = new Point(Theme.P(0), Theme.P(306));
+            hint.Size = new Size(hero.Width, Theme.P(22));
             hint.TextAlign = ContentAlignment.MiddleCenter;
             hint.Font = Theme.Small;
             hint.ForeColor = Theme.TextFaint;
@@ -120,34 +120,34 @@ namespace DiskMate
         private void BuildScanning()
         {
             var card = new CardPanel();
-            card.Size = new Size(620, 292);
+            card.Size = new Size(Theme.P(620), Theme.P(292));
             pageScanning.Controls.Add(card);
             pageScanning.Resize += delegate
             {
-                card.Location = new Point(Math.Max(0, (pageScanning.Width - card.Width) / 2),
-                    Math.Max(20, (pageScanning.Height - card.Height) / 2));
+                card.Location = new Point(Math.Max(Theme.P(0), (pageScanning.Width - card.Width) / 2),
+                    Math.Max(Theme.P(20), (pageScanning.Height - card.Height) / 2));
             };
 
             spinner = new Spinner();
-            spinner.Size = new Size(46, 46);
+            spinner.Size = new Size(Theme.P(46), Theme.P(46));
             spinner.BackColor = Theme.Surface;
-            spinner.Location = new Point((card.Width - 46) / 2, 40);
+            spinner.Location = new Point((card.Width - Theme.P(46)) / 2, Theme.P(40));
             card.Controls.Add(spinner);
 
             lblScanTitle = new Label();
             lblScanTitle.AutoSize = false;
-            lblScanTitle.Location = new Point(0, 100);
-            lblScanTitle.Size = new Size(card.Width, 30);
+            lblScanTitle.Location = new Point(Theme.P(0), Theme.P(100));
+            lblScanTitle.Size = new Size(card.Width, Theme.P(30));
             lblScanTitle.TextAlign = ContentAlignment.MiddleCenter;
-            lblScanTitle.Font = new Font(Theme.Family, 14f, FontStyle.Bold);
+            lblScanTitle.Font = Theme.F(14f, FontStyle.Bold);
             lblScanTitle.ForeColor = Theme.Text;
             Txt(lblScanTitle, "scan.title");
             card.Controls.Add(lblScanTitle);
 
             lblScanStep = new Label();
             lblScanStep.AutoSize = false;
-            lblScanStep.Location = new Point(30, 136);
-            lblScanStep.Size = new Size(card.Width - 60, 24);
+            lblScanStep.Location = new Point(Theme.P(30), Theme.P(136));
+            lblScanStep.Size = new Size(card.Width - Theme.P(60), Theme.P(24));
             lblScanStep.TextAlign = ContentAlignment.MiddleCenter;
             lblScanStep.ForeColor = Theme.TextSub;
             Txt(lblScanStep, "scan.preparing");
@@ -155,14 +155,14 @@ namespace DiskMate
 
             progressScan = new ThinProgress();
             progressScan.BackColor = Theme.Surface;
-            progressScan.Location = new Point(70, 178);
-            progressScan.Size = new Size(card.Width - 140, 8);
+            progressScan.Location = new Point(Theme.P(70), Theme.P(178));
+            progressScan.Size = new Size(card.Width - Theme.P(140), Theme.P(8));
             card.Controls.Add(progressScan);
 
             lblScanCount = new Label();
             lblScanCount.AutoSize = false;
-            lblScanCount.Location = new Point(70, 192);
-            lblScanCount.Size = new Size(card.Width - 140, 20);
+            lblScanCount.Location = new Point(Theme.P(70), Theme.P(192));
+            lblScanCount.Size = new Size(card.Width - Theme.P(140), Theme.P(20));
             lblScanCount.TextAlign = ContentAlignment.MiddleRight;
             lblScanCount.Font = Theme.Small;
             lblScanCount.ForeColor = Theme.TextFaint;
@@ -171,8 +171,8 @@ namespace DiskMate
             btnCancelScan = new FlatButton();
             btnCancelScan.Kind = BtnKind.Secondary;
             Txt(btnCancelScan, "scan.cancel");
-            btnCancelScan.Size = new Size(128, 38);
-            btnCancelScan.Location = new Point((card.Width - 128) / 2, 226);
+            btnCancelScan.Size = new Size(Theme.P(128), Theme.P(38));
+            btnCancelScan.Location = new Point((card.Width - Theme.P(128)) / 2, Theme.P(226));
             btnCancelScan.Click += delegate { CancelScan(); };
             card.Controls.Add(btnCancelScan);
         }
@@ -180,28 +180,28 @@ namespace DiskMate
         private void BuildWorking()
         {
             var card = new CardPanel();
-            card.Size = new Size(620, 244);
+            card.Size = new Size(Theme.P(620), Theme.P(244));
             pageWorking.Controls.Add(card);
             pageWorking.Resize += delegate
             {
-                card.Location = new Point(Math.Max(0, (pageWorking.Width - card.Width) / 2),
-                    Math.Max(20, (pageWorking.Height - card.Height) / 2));
+                card.Location = new Point(Math.Max(Theme.P(0), (pageWorking.Width - card.Width) / 2),
+                    Math.Max(Theme.P(20), (pageWorking.Height - card.Height) / 2));
             };
 
             var t = new Label();
             t.AutoSize = false;
-            t.Location = new Point(0, 54);
-            t.Size = new Size(card.Width, 30);
+            t.Location = new Point(Theme.P(0), Theme.P(54));
+            t.Size = new Size(card.Width, Theme.P(30));
             t.TextAlign = ContentAlignment.MiddleCenter;
-            t.Font = new Font(Theme.Family, 14f, FontStyle.Bold);
+            t.Font = Theme.F(14f, FontStyle.Bold);
             t.ForeColor = Theme.Text;
             Txt(t, "work.title");
             card.Controls.Add(t);
 
             lblWorkStep = new Label();
             lblWorkStep.AutoSize = false;
-            lblWorkStep.Location = new Point(40, 92);
-            lblWorkStep.Size = new Size(card.Width - 80, 24);
+            lblWorkStep.Location = new Point(Theme.P(40), Theme.P(92));
+            lblWorkStep.Size = new Size(card.Width - Theme.P(80), Theme.P(24));
             lblWorkStep.TextAlign = ContentAlignment.MiddleCenter;
             lblWorkStep.ForeColor = Theme.TextSub;
             Txt(lblWorkStep, "work.preparing");
@@ -209,14 +209,14 @@ namespace DiskMate
 
             progressWork = new ThinProgress();
             progressWork.BackColor = Theme.Surface;
-            progressWork.Location = new Point(70, 136);
-            progressWork.Size = new Size(card.Width - 140, 8);
+            progressWork.Location = new Point(Theme.P(70), Theme.P(136));
+            progressWork.Size = new Size(card.Width - Theme.P(140), Theme.P(8));
             card.Controls.Add(progressWork);
 
             lblWorkCount = new Label();
             lblWorkCount.AutoSize = false;
-            lblWorkCount.Location = new Point(70, 150);
-            lblWorkCount.Size = new Size(card.Width - 140, 20);
+            lblWorkCount.Location = new Point(Theme.P(70), Theme.P(150));
+            lblWorkCount.Size = new Size(card.Width - Theme.P(140), Theme.P(20));
             lblWorkCount.TextAlign = ContentAlignment.MiddleRight;
             lblWorkCount.Font = Theme.Small;
             lblWorkCount.ForeColor = Theme.TextFaint;
@@ -224,8 +224,8 @@ namespace DiskMate
 
             var hint = new Label();
             hint.AutoSize = false;
-            hint.Location = new Point(0, 190);
-            hint.Size = new Size(card.Width, 22);
+            hint.Location = new Point(Theme.P(0), Theme.P(190));
+            hint.Size = new Size(card.Width, Theme.P(22));
             hint.TextAlign = ContentAlignment.MiddleCenter;
             hint.Font = Theme.Small;
             hint.ForeColor = Theme.TextFaint;
@@ -238,9 +238,9 @@ namespace DiskMate
         {
             if (bar == null || search == null || btnCleanNow == null) return;
 
-            btnCleanNow.Location = new Point(bar.Width - btnCleanNow.Width, 11);
-            btnSelectNone.Location = new Point(btnCleanNow.Left - 10 - btnSelectNone.Width, 12);
-            btnSelectLow.Location = new Point(btnSelectNone.Left - 8 - btnSelectLow.Width, 12);
+            btnCleanNow.Location = new Point(bar.Width - btnCleanNow.Width, Theme.P(11));
+            btnSelectNone.Location = new Point(btnCleanNow.Left - Theme.P(10) - btnSelectNone.Width, Theme.P(12));
+            btnSelectLow.Location = new Point(btnSelectNone.Left - Theme.P(8) - btnSelectLow.Width, Theme.P(12));
 
             int btnLeft = btnSelectLow.Left;
             int maxSearch = Math.Max(150, btnLeft - 16);
@@ -251,7 +251,7 @@ namespace DiskMate
             // 空间不够时依次收窄搜索框，实在放不下才隐藏统计文字
             if (avail < 140)
             {
-                foreach (int w in new[] { 210, 170 })
+                foreach (int w in new[] { Theme.P(210), Theme.P(170) })
                 {
                     int sw = Math.Min(w, maxSearch);
                     int a = btnLeft - 16 - (sw + 16);
@@ -261,14 +261,14 @@ namespace DiskMate
             if (avail >= 140)
             {
                 lblSelected.Visible = true;
-                lblSelected.Bounds = new Rectangle(labelX, 18, avail, 22);
+                lblSelected.Bounds = new Rectangle(labelX, Theme.P(18), avail, Theme.P(22));
             }
             else
             {
                 lblSelected.Visible = false;
                 searchW = maxSearch;
             }
-            search.SetBounds(0, 10, searchW, 38);
+            search.SetBounds(Theme.P(0), Theme.P(10), searchW, Theme.P(38));
         }
 
         private MetricCard NewCard(string title, Color accent)        {
@@ -283,7 +283,7 @@ namespace DiskMate
         private void BuildResults()
         {
             var stats = new Panel();
-            stats.Height = 116;
+            stats.Height = Theme.P(116);
             stats.BackColor = Theme.Bg;
             pageResults.Controls.Add(stats);
 
@@ -298,10 +298,10 @@ namespace DiskMate
             stats.Resize += delegate
             {
                 MetricCard[] cards = { cardTotal, cardLow, cardMid, cardHigh };
-                int gap = 12;
-                int w = Math.Max(150, (stats.Width - gap * 3) / 4);
+                int gap = Theme.P(12);
+                int w = Math.Max(Theme.P(150), (stats.Width - gap * 3) / 4);
                 for (int i = 0; i < cards.Length; i++)
-                    cards[i].Bounds = new Rectangle(i * (w + gap), 6, w, 96);
+                    cards[i].Bounds = new Rectangle(i * (w + gap), Theme.P(6), w, Theme.P(96));
             };
 
             cardTotal.Click += delegate { SetFilter(-1); };
@@ -310,21 +310,21 @@ namespace DiskMate
             cardHigh.Click += delegate { SetFilter(filterRisk == 2 ? -1 : 2); };
 
             var bar = new Panel();
-            bar.Height = 60;
+            bar.Height = Theme.P(60);
             bar.BackColor = Theme.Bg;
             pageResults.Controls.Add(bar);
 
             search = new SearchBox();
-            search.Location = new Point(0, 10);
-            search.Size = new Size(300, 38);
+            search.Location = new Point(Theme.P(0), Theme.P(10));
+            search.Size = new Size(Theme.P(300), Theme.P(38));
             Txt(search, "search.ph");
             search.TextChanged2 += delegate { if (phase == 1) BindItems(); };
             bar.Controls.Add(search);
 
             lblSelected = new Label();
             lblSelected.AutoSize = false;
-            lblSelected.Location = new Point(316, 18);
-            lblSelected.Size = new Size(300, 22);
+            lblSelected.Location = new Point(Theme.P(316), Theme.P(18));
+            lblSelected.Size = new Size(Theme.P(300), Theme.P(22));
             lblSelected.Font = Theme.Bold;
             lblSelected.ForeColor = Theme.Text;
             Txt(lblSelected, "sel.none");
@@ -333,21 +333,21 @@ namespace DiskMate
             btnSelectLow = new FlatButton();
             btnSelectLow.Kind = BtnKind.Secondary;
             Txt(btnSelectLow, "btn.selectLow");
-            btnSelectLow.Size = new Size(108, 36);
+            btnSelectLow.Size = new Size(Theme.P(108), Theme.P(36));
             btnSelectLow.Click += delegate { SelectOnlyLow(); };
             bar.Controls.Add(btnSelectLow);
 
             btnSelectNone = new FlatButton();
             btnSelectNone.Kind = BtnKind.Secondary;
             Txt(btnSelectNone, "btn.selectNone");
-            btnSelectNone.Size = new Size(96, 36);
+            btnSelectNone.Size = new Size(Theme.P(96), Theme.P(36));
             btnSelectNone.Click += delegate { SelectNone(); };
             bar.Controls.Add(btnSelectNone);
 
             btnCleanNow = new FlatButton();
             btnCleanNow.Kind = BtnKind.Primary;
             Txt(btnCleanNow, "btn.clean");
-            btnCleanNow.Size = new Size(156, 38);
+            btnCleanNow.Size = new Size(Theme.P(156), Theme.P(38));
             btnCleanNow.Enabled = false;
             btnCleanNow.Click += delegate { StartClean(); };
             bar.Controls.Add(btnCleanNow);
@@ -359,7 +359,7 @@ namespace DiskMate
             pageResults.Controls.Add(body);
 
             var listCard = new CardPanel();
-            listCard.Padding = new Padding(12, 2, 8, 10);
+            listCard.Padding = new Padding(Theme.P(12), Theme.P(2), Theme.P(8), Theme.P(10));
             body.Controls.Add(listCard);
 
             listHost = new Panel();
@@ -397,41 +397,41 @@ namespace DiskMate
             listCard.Controls.Add(lblEmpty);
             listCard.Resize += delegate
             {
-                lblEmpty.Bounds = new Rectangle(12, listCard.Height / 2 - 30, Math.Max(50, listCard.Width - 40), 40);
+                lblEmpty.Bounds = new Rectangle(Theme.P(12), listCard.Height / 2 - Theme.P(30), Math.Max(Theme.P(50), listCard.Width - Theme.P(40)), Theme.P(40));
             };
 
             var detailHost = new Panel();
             detailHost.BackColor = Theme.Bg;
-            detailHost.Padding = new Padding(12, 0, 0, 0);
+            detailHost.Padding = new Padding(Theme.P(12), Theme.P(0), Theme.P(0), Theme.P(0));
             body.Controls.Add(detailHost);
 
             detailCard = new CardPanel();
             detailCard.Dock = DockStyle.Fill;
-            detailCard.Padding = new Padding(22);
+            detailCard.Padding = new Padding(Theme.P(22));
             detailHost.Controls.Add(detailCard);
             BuildDetailPanel();
 
             body.Resize += delegate
             {
-                int dw = 356;
-                if (body.Width < 720) dw = 320;
-                detailHost.Bounds = new Rectangle(Math.Max(0, body.Width - dw), 0, dw, body.Height);
-                int listW = Math.Max(200, body.Width - dw - 4);
-                listCard.Bounds = new Rectangle(0, 0, listW, body.Height);
+                int dw = Theme.P(356);
+                if (body.Width < Theme.P(720)) dw = Theme.P(320);
+                detailHost.Bounds = new Rectangle(Math.Max(Theme.P(0), body.Width - dw), Theme.P(0), dw, body.Height);
+                int listW = Math.Max(Theme.P(200), body.Width - dw - Theme.P(4));
+                listCard.Bounds = new Rectangle(Theme.P(0), Theme.P(0), listW, body.Height);
 
                 // 窄窗口下先收起「类别」列，再压「项目」列，避免横向滚动条
-                int catW = listW >= 640 ? 100 : 0;
+                int catW = listW >= Theme.P(640) ? Theme.P(100) : 0;
                 lvItems.Columns[1].Width = catW;
-                lvItems.Columns[0].Width = Math.Max(170, listW - catW - 104 - 88 - 36);
+                lvItems.Columns[0].Width = Math.Max(Theme.P(170), listW - catW - Theme.P(104) - Theme.P(88) - Theme.P(36));
             };
 
             pageResults.Resize += delegate
             {
                 int w = pageResults.Width;
                 int h = pageResults.Height;
-                stats.SetBounds(0, 0, w, 116);
-                bar.SetBounds(0, 116, w, 60);
-                body.SetBounds(0, 176, w, Math.Max(160, h - 176));
+                stats.SetBounds(Theme.P(0), Theme.P(0), w, Theme.P(116));
+                bar.SetBounds(Theme.P(0), Theme.P(116), w, Theme.P(60));
+                body.SetBounds(Theme.P(0), Theme.P(176), w, Math.Max(Theme.P(160), h - Theme.P(176)));
             };
         }
 
@@ -450,64 +450,64 @@ namespace DiskMate
             detailScroll = new Panel();
             detailScroll.BackColor = Theme.Surface;
             detailScroll.AutoScroll = true;
-            detailScroll.Location = new Point(22, 16);
+            detailScroll.Location = new Point(Theme.P(22), Theme.P(16));
             detailCard.Controls.Add(detailScroll);
 
             var cap = SectionLabel(""); Txt(cap, "det.title");
-            cap.Location = new Point(0, 0);
+            cap.Location = new Point(Theme.P(0), Theme.P(0));
             detailScroll.Controls.Add(cap);
 
             lblDetName = new Label();
-            lblDetName.Location = new Point(0, 20);
-            lblDetName.Size = new Size(280, 46);
+            lblDetName.Location = new Point(Theme.P(0), Theme.P(20));
+            lblDetName.Size = new Size(Theme.P(280), Theme.P(46));
             lblDetName.Font = Theme.H2;
             lblDetName.ForeColor = Theme.Text;
             Txt(lblDetName, "det.nothing");
             detailScroll.Controls.Add(lblDetName);
 
             badgeDetRisk = new Badge();
-            badgeDetRisk.Location = new Point(0, 72);
-            badgeDetRisk.Size = new Size(74, 24);
+            badgeDetRisk.Location = new Point(Theme.P(0), Theme.P(72));
+            badgeDetRisk.Size = new Size(Theme.P(74), Theme.P(24));
             badgeDetRisk.Visible = false;
             detailScroll.Controls.Add(badgeDetRisk);
 
             lblDetSize = new Label();
-            lblDetSize.Location = new Point(82, 68);
-            lblDetSize.Size = new Size(198, 30);
+            lblDetSize.Location = new Point(Theme.P(82), Theme.P(68));
+            lblDetSize.Size = new Size(Theme.P(198), Theme.P(30));
             lblDetSize.Font = Theme.Num;
             lblDetSize.ForeColor = Theme.Text;
             lblDetSize.Text = "";
             detailScroll.Controls.Add(lblDetSize);
 
             var h1 = SectionLabel(""); Txt(h1, "det.impact");
-            h1.Location = new Point(0, 112);
+            h1.Location = new Point(Theme.P(0), Theme.P(112));
             detailScroll.Controls.Add(h1);
 
             lblDetImpact = new Label();
-            lblDetImpact.Location = new Point(0, 134);
-            lblDetImpact.Size = new Size(280, 76);
+            lblDetImpact.Location = new Point(Theme.P(0), Theme.P(134));
+            lblDetImpact.Size = new Size(Theme.P(280), Theme.P(76));
             lblDetImpact.ForeColor = Theme.TextSub;
             Txt(lblDetImpact, "det.hint");
             detailScroll.Controls.Add(lblDetImpact);
 
             var h2 = SectionLabel(""); Txt(h2, "det.advice");
-            h2.Location = new Point(0, 216);
+            h2.Location = new Point(Theme.P(0), Theme.P(216));
             detailScroll.Controls.Add(h2);
 
             lblDetAdvice = new Label();
-            lblDetAdvice.Location = new Point(0, 238);
-            lblDetAdvice.Size = new Size(280, 56);
+            lblDetAdvice.Location = new Point(Theme.P(0), Theme.P(238));
+            lblDetAdvice.Size = new Size(Theme.P(280), Theme.P(56));
             lblDetAdvice.ForeColor = Theme.TextSub;
             lblDetAdvice.Text = "";
             detailScroll.Controls.Add(lblDetAdvice);
 
             var h3 = SectionLabel(""); Txt(h3, "det.path");
-            h3.Location = new Point(0, 298);
+            h3.Location = new Point(Theme.P(0), Theme.P(298));
             detailScroll.Controls.Add(h3);
 
             lblDetPath = new Label();
-            lblDetPath.Location = new Point(0, 320);
-            lblDetPath.Size = new Size(280, 72);
+            lblDetPath.Location = new Point(Theme.P(0), Theme.P(320));
+            lblDetPath.Size = new Size(Theme.P(280), Theme.P(72));
             lblDetPath.Font = Theme.Small;
             lblDetPath.ForeColor = Theme.TextFaint;
             lblDetPath.Text = "";
@@ -516,7 +516,7 @@ namespace DiskMate
             btnDetToggle = new FlatButton();
             btnDetToggle.Kind = BtnKind.Primary;
             Txt(btnDetToggle, "det.add");
-            btnDetToggle.Size = new Size(280, 40);
+            btnDetToggle.Size = new Size(Theme.P(280), Theme.P(40));
             btnDetToggle.Visible = false;
             btnDetToggle.Click += delegate
             {
@@ -532,7 +532,7 @@ namespace DiskMate
             btnOpenFolder.Kind = BtnKind.Secondary;
             Txt(btnOpenFolder, "det.open");
             btnOpenFolder.Icon = "folder";
-            btnOpenFolder.Size = new Size(280, 36);
+            btnOpenFolder.Size = new Size(Theme.P(280), Theme.P(36));
             btnOpenFolder.Visible = false;
             btnOpenFolder.Click += delegate { OpenCurrentFolder(); };
             detailCard.Controls.Add(btnOpenFolder);
@@ -544,39 +544,39 @@ namespace DiskMate
         private void LayoutDetail()
         {
             if (detailCard == null || detailScroll == null) return;
-            int w = Math.Max(120, detailCard.Width - 44);
+            int w = Math.Max(Theme.P(120), detailCard.Width - Theme.P(44));
             btnDetToggle.Width = w;
             btnOpenFolder.Width = w;
-            btnDetToggle.Location = new Point(22, detailCard.Height - 96);
-            btnOpenFolder.Location = new Point(22, detailCard.Height - 50);
+            btnDetToggle.Location = new Point(Theme.P(22), detailCard.Height - Theme.P(96));
+            btnOpenFolder.Location = new Point(Theme.P(22), detailCard.Height - Theme.P(50));
 
-            int bottom = detailCard.Height - 12;
+            int bottom = detailCard.Height - Theme.P(12);
             if (btnDetToggle.Visible) bottom = btnDetToggle.Top - 14;
-            int h = bottom - 14;
-            if (h < 60) h = 60;
-            detailScroll.SetBounds(22, 14, w, h);
+            int h = bottom - Theme.P(14);
+            if (h < Theme.P(60)) h = Theme.P(60);
+            detailScroll.SetBounds(Theme.P(22), Theme.P(14), w, h);
 
             int inner = Math.Max(80, w - 18);
             lblDetName.Width = inner;
             lblDetImpact.Width = inner;
             lblDetAdvice.Width = inner;
             lblDetPath.Width = inner;
-            lblDetSize.Width = Math.Max(60, inner - 82);
+            lblDetSize.Width = Math.Max(Theme.P(60), inner - Theme.P(82));
         }
 
         // ============================================================ big files
         private void BuildBigPage()
         {
             var bar = new Panel();
-            bar.Height = 62;
+            bar.Height = Theme.P(62);
             bar.BackColor = Theme.Bg;
             pageBig.Controls.Add(bar);
 
             btnBigScan = new FlatButton();
             btnBigScan.Kind = BtnKind.Primary;
             Txt(btnBigScan, "big.btn");
-            btnBigScan.Size = new Size(140, 38);
-            btnBigScan.Location = new Point(0, 10);
+            btnBigScan.Size = new Size(Theme.P(140), Theme.P(38));
+            btnBigScan.Location = new Point(Theme.P(0), Theme.P(10));
             btnBigScan.Click += delegate { StartBigScan(); };
             bar.Controls.Add(btnBigScan);
 
@@ -586,14 +586,14 @@ namespace DiskMate
             cmbThreshold.Font = Theme.Base;
             cmbThreshold.Items.AddRange(new object[] { "100 MB 以上", "200 MB 以上", "500 MB 以上", "1 GB 以上" });
             cmbThreshold.SelectedIndex = 1;
-            cmbThreshold.Size = new Size(140, 30);
-            cmbThreshold.Location = new Point(152, 14);
+            cmbThreshold.Size = new Size(Theme.P(140), Theme.P(30));
+            cmbThreshold.Location = new Point(Theme.P(152), Theme.P(14));
             bar.Controls.Add(cmbThreshold);
 
             lblBigHint = new Label();
             lblBigHint.AutoSize = false;
-            lblBigHint.Location = new Point(306, 14);
-            lblBigHint.Size = new Size(520, 30);
+            lblBigHint.Location = new Point(Theme.P(306), Theme.P(14));
+            lblBigHint.Size = new Size(Theme.P(520), Theme.P(30));
             lblBigHint.ForeColor = Theme.TextSub;
             Txt(lblBigHint, "big.idle");
             bar.Controls.Add(lblBigHint);
@@ -602,19 +602,19 @@ namespace DiskMate
             btnBigReveal.Kind = BtnKind.Secondary;
             Txt(btnBigReveal, "big.open");
             btnBigReveal.Icon = "folder";
-            btnBigReveal.Size = new Size(120, 36);
-            btnBigReveal.Location = new Point(840, 11);
+            btnBigReveal.Size = new Size(Theme.P(120), Theme.P(36));
+            btnBigReveal.Location = new Point(Theme.P(840), Theme.P(11));
             btnBigReveal.Click += delegate { RevealBigFile(); };
             bar.Controls.Add(btnBigReveal);
 
             bar.Resize += delegate
             {
-                btnBigReveal.Location = new Point(bar.Width - btnBigReveal.Width, 12);
-                lblBigHint.Width = Math.Max(120, btnBigReveal.Left - 20 - lblBigHint.Left);
+                btnBigReveal.Location = new Point(bar.Width - btnBigReveal.Width, Theme.P(12));
+                lblBigHint.Width = Math.Max(Theme.P(120), btnBigReveal.Left - Theme.P(20) - lblBigHint.Left);
             };
 
             var card = new CardPanel();
-            card.Padding = new Padding(12, 2, 8, 10);
+            card.Padding = new Padding(Theme.P(12), Theme.P(2), Theme.P(8), Theme.P(10));
             pageBig.Controls.Add(card);
 
             lvBig = new ListView();
@@ -624,15 +624,15 @@ namespace DiskMate
             lvBig.BorderStyle = BorderStyle.None;
             lvBig.Font = Theme.Base;
             lvBig.BackColor = Theme.Surface;
-            lvBig.Columns.Add(I18n.T("big.colsize"), 110, HorizontalAlignment.Right);
-            lvBig.Columns.Add(I18n.T("big.colpath"), 700);
+            lvBig.Columns.Add(I18n.T("big.colsize"), Theme.P(110), HorizontalAlignment.Right);
+            lvBig.Columns.Add(I18n.T("big.colpath"), Theme.P(700));
             lvBig.DoubleClick += delegate { RevealBigFile(); };
             card.Controls.Add(lvBig);
 
             pageBig.Resize += delegate
             {
-                bar.SetBounds(0, 0, pageBig.Width, 62);
-                card.SetBounds(0, 62, pageBig.Width, Math.Max(120, pageBig.Height - 62));
+                bar.SetBounds(Theme.P(0), Theme.P(0), pageBig.Width, Theme.P(62));
+                card.SetBounds(Theme.P(0), Theme.P(62), pageBig.Width, Math.Max(Theme.P(120), pageBig.Height - Theme.P(62)));
             };
         }
 
@@ -733,15 +733,15 @@ namespace DiskMate
         private void BuildLogPage()
         {
             var bar = new Panel();
-            bar.Height = 52;
+            bar.Height = Theme.P(52);
             bar.BackColor = Theme.Bg;
             pageLog.Controls.Add(bar);
 
             var b1 = new FlatButton();
             b1.Kind = BtnKind.Secondary;
             Txt(b1, "log.copy");
-            b1.Size = new Size(104, 36);
-            b1.Location = new Point(0, 4);
+            b1.Size = new Size(Theme.P(104), Theme.P(36));
+            b1.Location = new Point(Theme.P(0), Theme.P(4));
             b1.Click += delegate
             {
                 try { Clipboard.SetText(txtLog.Text); ShowBanner(BannerKind.Success, I18n.T("log.copied"), 4); }
@@ -753,8 +753,8 @@ namespace DiskMate
             b2.Kind = BtnKind.Secondary;
             Txt(b2, "log.open");
             b2.Icon = "folder";
-            b2.Size = new Size(140, 36);
-            b2.Location = new Point(114, 4);
+            b2.Size = new Size(Theme.P(140), Theme.P(36));
+            b2.Location = new Point(Theme.P(114), Theme.P(4));
             b2.Click += delegate
             {
                 try { Process.Start("explorer.exe", "\"" + logDir + "\""); } catch { }
@@ -764,13 +764,13 @@ namespace DiskMate
             var b3 = new FlatButton();
             b3.Kind = BtnKind.Secondary;
             Txt(b3, "log.clear");
-            b3.Size = new Size(104, 36);
-            b3.Location = new Point(264, 4);
+            b3.Size = new Size(Theme.P(104), Theme.P(36));
+            b3.Location = new Point(Theme.P(264), Theme.P(4));
             b3.Click += delegate { txtLog.Clear(); };
             bar.Controls.Add(b3);
 
             var card = new CardPanel();
-            card.Padding = new Padding(1);
+            card.Padding = new Padding(Theme.P(1));
             card.FillColor = Color.FromArgb(26, 29, 34);
             card.BorderColor = Color.FromArgb(40, 44, 52);
             pageLog.Controls.Add(card);
@@ -787,8 +787,8 @@ namespace DiskMate
 
             pageLog.Resize += delegate
             {
-                bar.SetBounds(0, 0, pageLog.Width, 52);
-                card.SetBounds(0, 52, pageLog.Width, Math.Max(120, pageLog.Height - 52));
+                bar.SetBounds(Theme.P(0), Theme.P(0), pageLog.Width, Theme.P(52));
+                card.SetBounds(Theme.P(0), Theme.P(52), pageLog.Width, Math.Max(Theme.P(120), pageLog.Height - Theme.P(52)));
             };
         }
 

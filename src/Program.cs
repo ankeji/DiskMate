@@ -226,10 +226,12 @@ namespace DiskMate
                     {
                         form.Show();
                         Application.DoEvents();
-                        sb.AppendLine("form: " + form.Width + "x" + form.Height);
+                        sb.AppendLine("form: " + form.Width + "x" + form.Height + "  scale=" + Theme.S.ToString("0.00"));
                         SaveShot(form, Path.Combine(baseDir, "screenshot.png"), sb, "welcome");
                         form.TestShowResults(items);
                         sb.AppendLine(form.TestLayoutDump());
+                        sb.AppendLine("--- text fit (default size) ---");
+                        sb.AppendLine(form.TestTextFit());
                         sb.AppendLine("--- overlap check (default size) ---");
                         sb.AppendLine(form.TestOverlaps());
                         Application.DoEvents();
@@ -237,8 +239,10 @@ namespace DiskMate
                         Application.DoEvents();
                         SaveShot(form, Path.Combine(baseDir, "_render-results.png"), sb, "results");
 
-                        form.TestResize(new Size(1040, 700));
+                        form.TestResize(Theme.WindowSize(1040, 700));
                         Application.DoEvents();
+                        sb.AppendLine("--- text fit (minimum window) ---");
+                        sb.AppendLine(form.TestTextFit());
                         sb.AppendLine("--- overlap check (minimum window 1040x700) ---");
                         sb.AppendLine(form.TestOverlaps());
                         form.Refresh();

@@ -98,15 +98,104 @@ namespace DiskMate
 
         public static readonly string Family = PickFamily();
 
-        public static readonly Font Base = new Font(Family, 9.5f);
-        public static readonly Font Bold = new Font(Family, 9.5f, FontStyle.Bold);
-        public static readonly Font Small = new Font(Family, 8.5f);
-        public static readonly Font SmallBold = new Font(Family, 8.5f, FontStyle.Bold);
-        public static readonly Font H1 = new Font(Family, 15f, FontStyle.Bold);
-        public static readonly Font H2 = new Font(Family, 11.5f, FontStyle.Bold);
-        public static readonly Font Hero = new Font(Family, 19f, FontStyle.Bold);
-        public static readonly Font Num = new Font(Family, 16f, FontStyle.Bold);
-        public static readonly Font Mono = new Font("Consolas", 9.5f);
+        // ---------------------------------------------------------- DPI / 缩放
+        // 96 DPI = 1.0。所有界面尺寸都按 96 DPI 的设计稿写，最后由 S 统一放大，
+        // 因此高 DPI 屏幕上字体、间距、控件一起等比缩放，不会出现「字变大、框没变」的错位。
+        public static readonly float S = DetectScale();
+
+        /// <summary>设计稿像素 → 实际像素。</summary>
+        public static int P(int v) { return (int)Math.Round(v * S); }
+
+        public static float PF(float v) { return v * S; }
+
+        public static Point Pt(int x, int y) { return new Point(P(x), P(y)); }
+
+        public static Size Sz(int w, int h) { return new Size(P(w), P(h)); }
+
+        /// <summary>按磅值建字体，实际尺寸随 S 缩放（像素单位，避免二次 DPI 放大）。</summary>
+        public static Font F(float pt, FontStyle style)
+        {
+            return new Font(Family, pt * 4f / 3f * S, style, GraphicsUnit.Pixel);
+        }
+
+        /// <summary>窗口初始大小：按 S 放大，但不超过屏幕可用区域。</summary>
+        public static Size WindowSize(int designW, int designH)
+        {
+            Size sz = Sz(designW, designH);
+            try
+            {
+                Rectangle wa = Screen.PrimaryScreen.WorkingArea;
+                int maxW = Math.Max(P(900), wa.Width - P(24));
+                int maxH = Math.Max(P(600), wa.Height - P(48));
+                if (sz.Width > maxW) sz.Width = maxW;
+                if (sz.Height > maxH) sz.Height = maxH;
+            }
+            catch { }
+            return sz;
+        }
+
+        /// <summary>读取 settings.ini 中的一项（AppData 优先，其次 exe 同目录）。</summary>
+        public static string ReadSetting(string key)
+        {
+            try
+            {
+                string[] paths = new string[]
+                {
+                    Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DiskMate"), "settings.ini"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.ini")
+                };
+                foreach (string p in paths)
+                {
+                    if (!File.Exists(p)) continue;
+                    foreach (string line in File.ReadAllLines(p, Encoding.UTF8))
+                    {
+                        int i = line.IndexOf('=');
+                        if (i <= 0) continue;
+                        if (line.Substring(0, i).Trim() != key) continue;
+                        return line.Substring(i + 1).Trim();
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+        private static float DetectScale()
+        {
+            try
+            {
+                string env = Environment.GetEnvironmentVariable("DISKMATE_SCALE");
+                float v;
+                if (!string.IsNullOrEmpty(env) &&
+                    float.TryParse(env, NumberStyles.Float, CultureInfo.InvariantCulture, out v))
+                {
+                    if (v >= 0.75f && v <= 3f) return v;
+                }
+                string saved = ReadSetting("scale");
+                if (!string.IsNullOrEmpty(saved) && !saved.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    float sv;
+                    if (float.TryParse(saved, NumberStyles.Float, CultureInfo.InvariantCulture, out sv) && sv >= 0.75f && sv <= 3f)
+                        return sv;
+                }
+                using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+                {
+                    float dpi = g.DpiX;
+                    if (dpi > 60f && dpi < 480f) return Math.Max(0.9f, Math.Min(3f, dpi / 96f));
+                }
+            }
+            catch { }
+            return 1f;
+        }
+
+        public static readonly Font Base = F(9.5f, FontStyle.Regular);
+        public static readonly Font Bold = F(9.5f, FontStyle.Bold);
+        public static readonly Font Small = F(8.5f, FontStyle.Regular);
+        public static readonly Font SmallBold = F(8.5f, FontStyle.Bold);
+        public static readonly Font H1 = F(15f, FontStyle.Bold);
+        public static readonly Font H2 = F(11.5f, FontStyle.Bold);
+        public static readonly Font Hero = F(19f, FontStyle.Bold);
+        public static readonly Font Num = F(16f, FontStyle.Bold);
+        public static readonly Font Mono = new Font("Consolas", 9.5f * 4f / 3f * S, FontStyle.Regular, GraphicsUnit.Pixel);
 
         private static string PickFamily()
         {
