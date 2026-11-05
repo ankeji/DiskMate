@@ -88,6 +88,8 @@ DiskMate est un projet personnel et gratuit : sans publicité, sans logiciel imp
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
 
+Le même bouton existe dans l'application : en bas à gauche « Support » (Alipay / WeChat pour l'interface chinoise, Ko-fi sinon).
+
 ## Licence
 
 MIT — voir [LICENSE](LICENSE).

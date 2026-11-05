@@ -88,6 +88,8 @@ DiskMate는 개인 프로젝트이며 무료입니다(광고 없음, 번들 소�
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
 
+앱 안에도 같은 버튼이 있습니다(왼쪽 아래 "Support"). 중국어 UI는 Alipay / WeChat, 그 외는 Ko-fi.
+
 ## 라이선스
 
 MIT — [LICENSE](LICENSE) 참고.

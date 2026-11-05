@@ -53,6 +53,55 @@ namespace DiskMate
             LangData.LoadMore(data, Add);
             AddCommon();
             AddUpdate();
+            AddDonate();
+        }
+
+        /// <summary>赞助弹窗词条（其余语言回退英文）。</summary>
+        private static void AddDonate()
+        {
+            string[,] rows =
+            {
+                { "zh-CN", "donate.btn", "赞助支持" },
+                { "zh-CN", "donate.title", "支持 DiskMate" },
+                { "zh-CN", "donate.sub", "DiskMate 一直免费、无广告、不收集任何数据。如果它帮你腾出了空间，可以请作者喝杯咖啡。" },
+                { "zh-CN", "donate.alipay", "支付宝" },
+                { "zh-CN", "donate.weixin", "微信" },
+                { "zh-CN", "donate.scanHint", "扫码即可，金额随意；点图片可放大，关闭本窗口不影响使用" },
+                { "zh-CN", "donate.kofi", "海外 · 用 Ko-fi" },
+                { "zh-CN", "donate.kofiHint", "中国大陆以外可用 Ko-fi 赞助：" },
+                { "zh-CN", "donate.close", "关闭" },
+
+                { "zh-TW", "donate.btn", "贊助支持" },
+                { "zh-TW", "donate.title", "支持 DiskMate" },
+                { "zh-TW", "donate.sub", "DiskMate 一直免費、無廣告、不收集任何資料。如果它幫你騰出了空間，可以請作者喝杯咖啡。" },
+                { "zh-TW", "donate.alipay", "支付寶" },
+                { "zh-TW", "donate.weixin", "微信" },
+                { "zh-TW", "donate.scanHint", "掃碼即可，金額隨意；點圖片可放大，關閉本視窗不影響使用" },
+                { "zh-TW", "donate.kofi", "海外 · 用 Ko-fi" },
+                { "zh-TW", "donate.kofiHint", "中國大陸以外可用 Ko-fi 贊助：" },
+                { "zh-TW", "donate.close", "關閉" },
+
+                { "en-US", "donate.btn", "Support" },
+                { "en-US", "donate.title", "Support DiskMate" },
+                { "en-US", "donate.sub", "DiskMate is free, ad-free and collects no data. If it freed up some space for you, you can buy the author a coffee." },
+                { "en-US", "donate.alipay", "Alipay" },
+                { "en-US", "donate.weixin", "WeChat" },
+                { "en-US", "donate.scanHint", "Scan to donate any amount; click an image to zoom" },
+                { "en-US", "donate.kofi", "Buy me a coffee" },
+                { "en-US", "donate.kofiHint", "Ko-fi opens in your browser:" },
+                { "en-US", "donate.close", "Close" }
+            };
+
+            for (int i = 0; i < rows.GetLength(0); i++)
+            {
+                Dictionary<string, string> d;
+                if (!data.TryGetValue(rows[i, 0], out d))
+                {
+                    d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    data[rows[i, 0]] = d;
+                }
+                d[rows[i, 1]] = rows[i, 2];
+            }
         }
 
         /// <summary>更新相关词条（其余语言回退英文）。</summary>

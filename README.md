@@ -22,6 +22,8 @@ Windows 桌面 C 盘清理工具：**点「开始扫描」→ 逐项列出可清
 
 ![更新弹窗](screenshot-update.png)
 
+![赞助弹窗](screenshot-donate.png)
+
 ---
 
 ## 一、交互流程
@@ -259,6 +261,7 @@ DiskMate/
 │   ├── Logo.cs             品牌标志绘制 + 多尺寸 ICO 生成
 │   ├── Update.cs           版本号 / 清单解析 / 下载 / SHA-256 校验 / 替换脚本
 │   ├── UpdateDialog.cs     更新弹窗（版本对比 + 更新说明 + 下载进度）
+│   ├── Donate.cs           赞助弹窗（内嵌收款码 / Ko-fi 链接）
 │   ├── Pages.cs            三个页面的构建 + 扫描步骤表 + 风险表
 │   ├── MainForm.cs         外壳、导航、语言切换、扫描与清理流程、排序筛选
 │   ├── Program.cs          入口 + --selftest / --makeicon / --langtest
@@ -282,6 +285,8 @@ DiskMate/
 | `MiniJson` | 100 行手写 JSON 解析器，解析 `tag_name` / `assets` / `body` |
 | `UpdateService.WriteManifest()` | `--writeversion` 用：以当前 exe 生成 version.txt（含 sha256 / size） |
 | `UpdateDialog` | 更新弹窗；下载与校验在后台线程，进度回主线程 |
+| `DonateDialog` | 赞助弹窗；按语言选区收款码或 Ko-fi，图片从内嵌资源读 |
+| `QrBox` | 收款码控件：等比缩放 + 圆角描边 + 点击打开原图 |
 | `BeginScan()` / `CancelScan()` | 后台扫描 + UI 线程进度回调 + 取消标志 |
 | `StartClean()` / `Execute()` | 逐项清理、汇报进度、结束后回测剩余大小并更新列表 |
 | `BuildDriverPlan()` / `PruneDrivers()` | 解析 `pnputil /enum-drivers`，同名驱动只留最新，估算可释放空间 |
@@ -342,3 +347,9 @@ DiskMate 是个人项目：免费、无广告、无捆绑、不收集任何数�
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
 
 赞助不附带任何义务，也不影响功能 —— 所有功能对所有人一样开放。
+
+软件里也放了同一个入口：左下角「赞助支持」按钮，中文界面直接显示支付宝 / 微信收款码（点图片可放大），其他语言显示 Ko-fi。
+
+![赞助弹窗](screenshot-donate.png)
+
+图片通过 `build.bat` 的 `/resource:` 参数内嵌进 exe，所以仍是单文件；点收款码会把原图释放到 `%TEMP%\DiskMate-donate\` 用系统看图工具打开。

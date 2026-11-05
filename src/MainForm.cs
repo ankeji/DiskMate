@@ -22,6 +22,7 @@ namespace DiskMate
         private FlowLayoutPanel rightBox;
         private FlatButton btnLang;
         private FlatButton btnUpdate;
+        private FlatButton btnDonate;
         private UpdateInfo pendingUpdate;
         private bool checkingUpdate;
         private DiskMeter dmC, dmD;
@@ -180,6 +181,14 @@ namespace DiskMate
                 CheckUpdate(false);
             };
             sidebar.Controls.Add(btnUpdate);
+
+            btnDonate = new FlatButton();
+            btnDonate.Kind = BtnKind.Ghost;
+            btnDonate.Size = new Size(184, 26);
+            btnDonate.Font = Theme.Small;
+            btnDonate.Text = I18n.T("donate.btn");
+            btnDonate.Click += delegate { DonateDialog.Show(this); };
+            sidebar.Controls.Add(btnDonate);
 
             dmC = new DiskMeter(); dmC.Letter = 'C';
             dmD = new DiskMeter(); dmD.Letter = 'D';
@@ -351,6 +360,11 @@ namespace DiskMate
                 btnUpdate.Width = sidebar.Width - 36;
                 btnUpdate.Location = new Point(18, y + 44);
             }
+            if (btnDonate != null)
+            {
+                btnDonate.Width = sidebar.Width - 36;
+                btnDonate.Location = new Point(18, y + 78);
+            }
 
             int bottom = sidebar.Height - 18;
             lblVersion.Location = new Point(22, bottom - 15);
@@ -495,6 +509,7 @@ namespace DiskMate
             if (navLog != null) navLog.Invalidate();
             if (btnLang != null) btnLang.Text = LangText();
             UpdateButtonText();
+            if (btnDonate != null) btnDonate.Text = I18n.T("donate.btn");
             if (lblAdmin != null) lblAdmin.Text = IsAdmin() ? I18n.T("admin.yes") : I18n.T("admin.no");
             if (btnRescan != null) btnRescan.Text = I18n.T("btn.rescan");
             if (lblEmpty != null) lblEmpty.Text = all.Count == 0 ? I18n.T("empty.none") : I18n.T("empty.filter");

@@ -97,6 +97,8 @@ DiskMate 是個人專案：免費、無廣告、無綁定、不收集任何資�
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
 
+軟體內也有同一個入口：左下角「贊助支持」，中文介面顯示支付寶 / 微信收款碼。
+
 ## 授權
 
 MIT，見 [LICENSE](LICENSE)。

@@ -16,6 +16,7 @@ namespace DiskMate
             string installTest = null;
             string dialogTest = null;
             string writeVersion = null;
+            string donateTest = null;
             string outPath = null;
             foreach (string a in args)
             {
@@ -29,6 +30,7 @@ namespace DiskMate
                 else if (a.StartsWith("--installtest=", StringComparison.OrdinalIgnoreCase)) installTest = a.Substring("--installtest=".Length);
                 else if (a.StartsWith("--updatedialog=", StringComparison.OrdinalIgnoreCase)) dialogTest = a.Substring("--updatedialog=".Length);
                 else if (a.StartsWith("--writeversion=", StringComparison.OrdinalIgnoreCase)) writeVersion = a.Substring("--writeversion=".Length);
+                else if (a.StartsWith("--donatedialog=", StringComparison.OrdinalIgnoreCase)) donateTest = a.Substring("--donatedialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
             }
 
@@ -100,6 +102,15 @@ namespace DiskMate
                 Console.WriteLine("target size after swap: " + new FileInfo(parts[1]).Length);
                 Console.WriteLine("sha256 target after : " + UpdateService.Sha256Of(parts[1]));
                 Console.WriteLine("script removed: " + (!File.Exists(bat)) + "  payload removed: " + (!File.Exists(parts[0])));
+                return;
+            }
+            if (donateTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                string[] dt = donateTest.Split('|');
+                if (dt.Length > 1) I18n.Lang = dt[1];
+                DonateDialog.RenderTo(dt[0]);
+                Console.WriteLine("donate dialog rendered: " + dt[0] + "  lang=" + I18n.Lang);
                 return;
             }
             if (writeVersion != null)

@@ -88,6 +88,8 @@ DiskMate — бесплатный личный проект: без реклам
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
 
+Та же кнопка есть в программе: слева внизу «Support» (Alipay / WeChat для китайского интерфейса, иначе Ko-fi).
+
 ## Лицензия
 
 MIT — см. [LICENSE](LICENSE).
