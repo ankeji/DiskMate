@@ -305,9 +305,12 @@ namespace DiskMate
             int pctW = Theme.P(44);
             TextRenderer.DrawText(g, Letter + ":", Theme.SmallBold,
                 new Rectangle(0, 0, letterW, rowH), Theme.Text, Theme.LeftMid);
-            TextRenderer.DrawText(g, I18n.F("drive.free", Theme.Fmt(Free)), Theme.Small,
-                new Rectangle(letterW + Theme.P(4), 0, Math.Max(0, Width - letterW - pctW - Theme.P(8)), rowH),
-                Theme.TextSub, Theme.LeftMid);
+            int freeW = Math.Max(0, Width - letterW - pctW - Theme.P(8));
+            string freeText = I18n.F("drive.free", Theme.Fmt(Free));
+            if (freeW > 0 && TextRenderer.MeasureText(g, freeText, Theme.Small).Width > freeW)
+                freeText = Theme.Fmt(Free);      // 放不下就只显示数字，绝不压到百分比上
+            TextRenderer.DrawText(g, freeText, Theme.Small,
+                new Rectangle(letterW + Theme.P(4), 0, freeW, rowH), Theme.TextSub, Theme.LeftMid);
             TextRenderer.DrawText(g, usedPct.ToString("N0") + "%", Theme.Small,
                 new Rectangle(Math.Max(0, Width - pctW), 0, pctW, rowH), Theme.TextFaint, Theme.RightMid);
 
@@ -321,7 +324,10 @@ namespace DiskMate
                     Theme.P(3), usedPct > 90 ? Theme.High : (usedPct > 75 ? Theme.Mid : Theme.Primary));
             }
 
-            TextRenderer.DrawText(g, I18n.F("drive.total", Theme.Fmt(Total)), Theme.Small,
+            string totalText = I18n.F("drive.total", Theme.Fmt(Total));
+            if (TextRenderer.MeasureText(g, totalText, Theme.Small).Width > Width)
+                totalText = Theme.Fmt(Total);
+            TextRenderer.DrawText(g, totalText, Theme.Small,
                 new Rectangle(0, line2Y, Width, rowH), Theme.TextFaint, Theme.LeftMid);
         }
     }
