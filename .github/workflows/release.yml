@@ -26,11 +26,10 @@ jobs:
         shell: cmd
         run: git tag -l --format="%(contents)" ${{ github.ref_name }} > release-notes.txt
 
-      - name: Generate version.txt
+      - name: Generate version.txt (quotes matter: cmd treats | as a pipe)
         shell: cmd
         run: >-
-          DiskMate.exe
-          --writeversion=version.txt|https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/DiskMate.exe|@release-notes.txt
+          DiskMate.exe "--writeversion=version.txt|https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/DiskMate.exe|@release-notes.txt"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
