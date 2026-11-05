@@ -56,4 +56,5 @@ jobs:
           git checkout main
           git add version.txt
           git diff --staged --quiet || git commit -m "chore: version.txt for ${{ github.ref_name }}"
-          git push origin main
+          git pull --rebase origin main
+      git push origin main
