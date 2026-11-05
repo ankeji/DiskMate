@@ -132,12 +132,16 @@ powershell -ExecutionPolicy Bypass -File scripts\release.ps1 2.1.1 "修复窄窗
 脚本会：改 `src/Update.cs` 里的版本号 → 编译 → 跑自检 → 生成 `version.txt` → 提交 → 打 tag `v2.1.1` → 推送。
 推送后 GitHub Actions（`.github/workflows/release.yml`）自动编译、跑 `--selftest`、创建 Release（附 `DiskMate.exe` + `version.txt`），再把 `version.txt` 提交回 `main`。
 
-**B. 手动打 tag**
+> 仓库配置、token、代理、CI 排错的完整说明见 [`docs/GITHUB-SETUP.md`](docs/GITHUB-SETUP.md)。
+
+**B. 手动打带说明的 tag**
 
 ```bat
-git tag v2.1.1
+git tag -a v2.1.1 -F docs\release-notes-v2.1.1.md
 git push origin v2.1.1
 ```
+
+标签说明会被 Actions 取出来，同时写进 Release 正文和 `version.txt` 的 `notes.zh` / `notes.en`，用户在更新弹窗里看到的就是它。
 
 **C. 完全手动**
 
