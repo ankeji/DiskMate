@@ -12,7 +12,7 @@ namespace DiskMate
     public static class AppInfo
     {
         /// <summary>程序版本。发版时改这里（tag 用 v + 同样的数字）。</summary>
-        public const string Version = "2.2.1";
+        public const string Version = "1.0.0";
 
         /// <summary>GitHub 仓库。</summary>
         public const string Repo = "ankeji/DiskMate";
@@ -87,29 +87,22 @@ namespace DiskMate
         public static UpdateInfo Check(out string error)
         {
             error = null;
-            UpdateInfo best = null;
             var errors = new List<string>();
-            int reachable = 0;
 
             bool ok1;
             UpdateInfo a = TrySource(ManifestUrl, errors, out ok1);
-            if (ok1) reachable++;
-            if (a != null) best = a;
-
-            bool ok2;
-            UpdateInfo b = TrySource(ReleaseApi, errors, out ok2);
-            if (ok2) reachable++;
-            if (b != null)
+            if (ok1)
             {
-                bool newer = best == null || ParseVersion(b.Version) > ParseVersion(best.Version);
-                bool betterNotes = best != null && ParseVersion(b.Version) == ParseVersion(best.Version)
-                                   && best.Notes.Length == 0 && b.Notes.Length > 0;
-                if (newer || betterNotes) best = b;
+                // version.txt 由 CI 每次发版生成，是权威源：可达就以它为准，
+                // 避免历史上更高版本号的旧 Release 被误判成「有更新」
+                return a;
             }
 
-            if (best != null) return best;
-            // 只要有一个源成功访问且没给出更高版本，就是「已是最新」，不算失败
-            if (reachable == 0 && errors.Count > 0) error = string.Join("; ", errors.ToArray());
+            // 清单不可达时才退回 GitHub Releases API
+            bool ok2;
+            UpdateInfo b = TrySource(ReleaseApi, errors, out ok2);
+            if (b != null) return b;
+            if (!ok2 && errors.Count > 0) error = string.Join("; ", errors.ToArray());
             return null;
         }
 

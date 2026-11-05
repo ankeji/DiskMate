@@ -260,41 +260,71 @@ namespace DiskMate
         public char Letter = 'C';
         public long Total, Free;
 
+        /// <summary>行高按字体实际高度算，避免高 DPI 下文字压到进度条上。</summary>
+        private static int RowH
+        {
+            get { return Math.Max(Theme.P(18), Theme.Small.Height + Theme.P(2)); }
+        }
+
+        /// <summary>控件建议高度（两行文字 + 进度条 + 间距）。</summary>
+        public static int PreferredHeight
+        {
+            get { return RowH * 2 + Theme.P(16); }
+        }
+
         public DiskMeter()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Theme.Sidebar;
-            Size = new Size(184, 58);
+            Size = new Size(Theme.P(184), PreferredHeight);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            var g = e.Graphics;
+            Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Theme.Sidebar);
+
+            int rowH = RowH;
+            int barH = Theme.P(7);
+            int gap = Theme.P(4);
+            int barY = rowH + gap;
+            int line2Y = barY + barH + Theme.P(3);
+
             if (Total <= 0)
             {
-                TextRenderer.DrawText(g, Letter + ": 不可用", Theme.Small, new Rectangle(0, 0, Width, Height), Theme.TextFaint, Theme.LeftMid);
+                TextRenderer.DrawText(g, I18n.F("drive.none", Letter.ToString()), Theme.Small,
+                    new Rectangle(0, 0, Width, rowH), Theme.TextFaint, Theme.LeftMid);
                 return;
             }
+
             double usedPct = (Total - Free) * 100.0 / Total;
 
-            TextRenderer.DrawText(g, Letter + ":", Theme.SmallBold, new Rectangle(0, 0, 20, 18), Theme.Text, Theme.LeftMid);
-            TextRenderer.DrawText(g, Theme.Fmt(Free) + " 可用", Theme.Small, new Rectangle(20, 0, Width - 44, 18), Theme.TextSub, Theme.LeftMid);
-            TextRenderer.DrawText(g, usedPct.ToString("N0") + "%", Theme.Small, new Rectangle(0, 0, Width, 18), Theme.TextFaint, Theme.RightMid);
+            int letterW = Math.Min(Width, Theme.P(24));
+            int pctW = Theme.P(44);
+            TextRenderer.DrawText(g, Letter + ":", Theme.SmallBold,
+                new Rectangle(0, 0, letterW, rowH), Theme.Text, Theme.LeftMid);
+            TextRenderer.DrawText(g, I18n.F("drive.free", Theme.Fmt(Free)), Theme.Small,
+                new Rectangle(letterW + Theme.P(4), 0, Math.Max(0, Width - letterW - pctW - Theme.P(8)), rowH),
+                Theme.TextSub, Theme.LeftMid);
+            TextRenderer.DrawText(g, usedPct.ToString("N0") + "%", Theme.Small,
+                new Rectangle(Math.Max(0, Width - pctW), 0, pctW, rowH), Theme.TextFaint, Theme.RightMid);
 
-            var bar = new Rectangle(0, 24, Width, 7);
-            Theme.FillRound(g, bar, 4, Color.FromArgb(238, 241, 246));
+            var bar = new Rectangle(0, barY, Width, barH);
+            Theme.FillRound(g, bar, Theme.P(4), Color.FromArgb(238, 241, 246));
             int w = (int)Math.Round(Width * Math.Min(1.0, usedPct / 100.0));
-            if (w > 3)
-                Theme.FillRound(g, new Rectangle(1, 25, w - 2, 5), 3,
-                    usedPct > 90 ? Theme.High : (usedPct > 75 ? Theme.Mid : Theme.Primary));
+            if (w > Theme.P(3))
+            {
+                int inset = Theme.P(1);
+                Theme.FillRound(g, new Rectangle(inset, barY + inset, Math.Max(1, w - inset * 2), Math.Max(1, barH - inset * 2)),
+                    Theme.P(3), usedPct > 90 ? Theme.High : (usedPct > 75 ? Theme.Mid : Theme.Primary));
+            }
 
-            TextRenderer.DrawText(g, "总容量 " + Theme.Fmt(Total), Theme.Small, new Rectangle(0, 35, Width, 18), Theme.TextFaint, Theme.LeftMid);
+            TextRenderer.DrawText(g, I18n.F("drive.total", Theme.Fmt(Total)), Theme.Small,
+                new Rectangle(0, line2Y, Width, rowH), Theme.TextFaint, Theme.LeftMid);
         }
     }
-
     // ============================================================ spinner
     internal class Spinner : Control
     {

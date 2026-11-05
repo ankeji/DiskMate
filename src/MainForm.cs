@@ -26,6 +26,7 @@ namespace DiskMate
         private UpdateInfo pendingUpdate;
         private bool checkingUpdate;
         private DiskMeter dmC, dmD;
+        private int meterTop;
         private Badge chipAdmin;
         private Banner banner;
 
@@ -366,15 +367,34 @@ namespace DiskMate
                 btnDonate.Location = new Point(Theme.P(18), y + Theme.P(78));
             }
 
-            int bottom = sidebar.Height - Theme.P(18);
-            lblVersion.Location = new Point(Theme.P(22), bottom - Theme.P(15));
+            // 底部区：版本 → 权限 → D 盘 → C 盘，从下往上依次堆叠，间距与控件高度都随 DPI 缩放
+            int meterH = DiskMeter.PreferredHeight;
+            int pad = Theme.P(12);
+
+            int bottom = sidebar.Height - Theme.P(10);
+            lblVersion.Location = new Point(Theme.P(22), bottom - lblVersion.Height);
             lblVersion.Width = sidebar.Width - Theme.P(40);
-            lblAdmin.Location = new Point(Theme.P(22), bottom - Theme.P(40));
+
+            int adminY = lblVersion.Top - Theme.P(2) - lblAdmin.Height;
+            lblAdmin.Location = new Point(Theme.P(22), adminY);
             lblAdmin.Width = sidebar.Width - Theme.P(40);
-            dmD.Location = new Point(Theme.P(16), lblAdmin.Top - Theme.P(74));
+
+            int dmDY = adminY - Theme.P(8) - meterH;
+            int dmCY = dmDY - Theme.P(4) - meterH;
+
+            // 垂直空间不足时不显示磁盘条（例如小屏 + 200% 缩放），避免和上方按钮叠在一起
+            int limit = (btnDonate != null ? btnDonate.Bottom : Theme.P(300)) + Theme.P(10);
+            bool roomForMeters = dmCY >= limit;
+            dmC.Visible = roomForMeters;
+            dmD.Visible = roomForMeters;
+            meterTop = roomForMeters ? dmCY : (adminY - Theme.P(8) - Theme.P(14));
+
+            dmD.Location = new Point(Theme.P(16), dmDY);
             dmD.Width = sidebar.Width - Theme.P(32);
-            dmC.Location = new Point(Theme.P(16), dmD.Top - Theme.P(64));
+            dmD.Height = meterH;
+            dmC.Location = new Point(Theme.P(16), dmCY);
             dmC.Width = sidebar.Width - Theme.P(32);
+            dmC.Height = meterH;
             sidebar.Invalidate();
         }
 
@@ -393,7 +413,7 @@ namespace DiskMate
             TextRenderer.DrawText(g, I18n.T("app.tagline"), Theme.Small, new Rectangle(Theme.P(63), Theme.P(46), Theme.P(146), Theme.P(18)), Theme.TextFaint, Theme.LeftMid);
 
             using (var pen = new Pen(Theme.Border))
-                g.DrawLine(pen, Theme.P(18), dmC.Top - Theme.P(14), sidebar.Width - Theme.P(18), dmC.Top - Theme.P(14));
+                g.DrawLine(pen, Theme.P(18), meterTop, sidebar.Width - Theme.P(18), meterTop);
         }
 
         private void ShowPage(int idx)
@@ -1322,7 +1342,13 @@ namespace DiskMate
             CheckOverlap(sb, "detailScroll / 加入清理", detailScroll, btnDetToggle);
             CheckOverlap(sb, "detailScroll / 打开目录", detailScroll, btnOpenFolder);
             CheckOverlap(sb, "listCard / detailCard", lvItems, detailCard);
-            sb.AppendLine("  detailCard=" + detailCard.Bounds + " scroll=" + detailScroll.Bounds
+            CheckOverlap(sb, "dmC / btnDonate", dmC, btnDonate);
+            CheckOverlap(sb, "dmC / dmD", dmC, dmD);
+            CheckOverlap(sb, "dmD / lblAdmin", dmD, lblAdmin);
+            CheckOverlap(sb, "lblAdmin / lblVersion", lblAdmin, lblVersion);
+            sb.AppendLine("  dmC=" + (dmC == null ? "null" : dmC.Bounds.ToString() + " vis=" + dmC.Visible)
+                + " dmD=" + (dmD == null ? "null" : dmD.Bounds.ToString() + " vis=" + dmD.Visible)
+                + " meterH=" + (dmC == null ? 0 : DiskMeter.PreferredHeight) + " fontH=" + Theme.Small.Height);            sb.AppendLine("  detailCard=" + detailCard.Bounds + " scroll=" + detailScroll.Bounds
                 + " toggle=" + btnDetToggle.Bounds + " folder=" + btnOpenFolder.Bounds);
             return sb.ToString();
         }

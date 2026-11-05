@@ -99,7 +99,7 @@ Windows 缩放设成 125%、150%、200% 时，界面整体等比放大：字体�
 
 用户不用重新下载安装包，直接在界面里升级：
 
-- 左下角常驻 `v2.1.0 · 检查更新`，发现新版本时变成蓝色「更新到 v2.1.x」。
+- 左下角常驻 `v1.0.0 · 检查更新`，发现新版本时变成蓝色「更新到 v1.x」。
 - 启动 2.5 秒后静默查一次，有新版本只弹一条提示条，不打扰使用。
 - 点按钮 → 弹窗显示「当前版本 → 最新版本」+ 更新说明 → 「下载并安装」→ 进度条 → SHA-256 校验 → 启动替换脚本 → 程序退出 → 几秒后新版自己打开。
 
@@ -118,7 +118,7 @@ Windows 缩放设成 125%、150%、200% 时，界面整体等比放大：字体�
 
 ```ini
 version=2.1.1
-url=https://github.com/ankeji/DiskMate/releases/download/v2.1.1/DiskMate.exe
+url=https://github.com/ankeji/DiskMate/releases/download/v1.0.1/DiskMate.exe
 sha256=0C26A3724DDD27449566199E167E3DCD33C13073ADD0239053D58B3466480E14
 size=340480
 date=2026-11-06
@@ -128,7 +128,7 @@ notes.en=1. In-app updates\n2. Fixed narrow-window layout
 
 | 字段 | 说明 |
 |---|---|
-| `version` | 必须，比当前版本大才会提示；`2.1.1` / `2.2` 都能解析 |
+| `version` | 必须，比当前版本大才会提示；`1.0.1` / `1.1` 都能解析 |
 | `url` | 必须，绝对地址，或与清单同目录的相对文件名 |
 | `sha256` | 可选，填了就强校验，不匹配立即中止（推荐填） |
 | `size` | 可选，服务器不返回 Content-Length 时用来算进度 |
@@ -142,7 +142,7 @@ notes.en=1. In-app updates\n2. Fixed narrow-window layout
 powershell -ExecutionPolicy Bypass -File scripts\release.ps1 2.1.1 "修复窄窗口布局" "Fixed narrow-window layout"
 ```
 
-脚本会：改 `src/Update.cs` 里的版本号 → 编译 → 跑自检 → 生成 `version.txt` → 提交 → 打 tag `v2.1.1` → 推送。
+脚本会：改 `src/Update.cs` 里的版本号 → 编译 → 跑自检 → 生成 `version.txt` → 提交 → 打 tag `v1.0.1` → 推送。
 推送后 GitHub Actions（`.github/workflows/release.yml`）自动编译、跑 `--selftest`、创建 Release（附 `DiskMate.exe` + `version.txt`），再把 `version.txt` 提交回 `main`。
 
 > 仓库配置、token、代理、CI 排错的完整说明见 [`docs/GITHUB-SETUP.md`](docs/GITHUB-SETUP.md)。
@@ -150,8 +150,8 @@ powershell -ExecutionPolicy Bypass -File scripts\release.ps1 2.1.1 "修复窄窗
 **B. 手动打带说明的 tag**
 
 ```bat
-git tag -a v2.1.1 -F docs\release-notes-v2.1.1.md
-git push origin v2.1.1
+git tag -a v1.0.1 -F docs\release-notes-v1.0.1.md
+git push origin v1.0.1
 ```
 
 标签说明会被 Actions 取出来，同时写进 Release 正文和 `version.txt` 的 `notes.zh` / `notes.en`，用户在更新弹窗里看到的就是它。
@@ -159,12 +159,12 @@ git push origin v2.1.1
 **C. 完全手动**
 
 1. 改 `src/Update.cs` 的 `AppInfo.Version`，`build.bat`；
-2. 在 GitHub 上新建 Release，tag 写 `v2.1.1`，上传 `DiskMate.exe`；
+2. 在 GitHub 上新建 Release，tag 写 `v1.0.1`，上传 `DiskMate.exe`；
 3. 生成本地清单并提交：
 
 ```bat
-DiskMate.exe --writeversion=version.txt|https://github.com/ankeji/DiskMate/releases/download/v2.1.1/DiskMate.exe|1. 修复A\n2. 修复B|1. Fixed A\n2. Fixed B
-git add version.txt && git commit -m "chore: version.txt for v2.1.1" && git push
+DiskMate.exe --writeversion=version.txt|https://github.com/ankeji/DiskMate/releases/download/v1.0.1/DiskMate.exe|1. 修复A\n2. 修复B|1. Fixed A\n2. Fixed B
+git add version.txt && git commit -m "chore: version.txt for v1.0.1" && git push
 ```
 
 ### 实现要点（`src/Update.cs`）

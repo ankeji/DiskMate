@@ -54,8 +54,38 @@ namespace DiskMate
             AddCommon();
             AddUpdate();
             AddDonate();
+            AddDrive();
         }
 
+        /// <summary>侧边栏磁盘占用条词条。</summary>
+        private static void AddDrive()
+        {
+            string[,] rows =
+            {
+                { "zh-CN", "drive.free", "{0} 可用" },
+                { "zh-CN", "drive.total", "总容量 {0}" },
+                { "zh-CN", "drive.none", "{0}: 不可用" },
+
+                { "zh-TW", "drive.free", "{0} 可用" },
+                { "zh-TW", "drive.total", "總容量 {0}" },
+                { "zh-TW", "drive.none", "{0}: 不可用" },
+
+                { "en-US", "drive.free", "{0} free" },
+                { "en-US", "drive.total", "Total {0}" },
+                { "en-US", "drive.none", "{0}: unavailable" }
+            };
+
+            for (int i = 0; i < rows.GetLength(0); i++)
+            {
+                Dictionary<string, string> d;
+                if (!data.TryGetValue(rows[i, 0], out d))
+                {
+                    d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    data[rows[i, 0]] = d;
+                }
+                d[rows[i, 1]] = rows[i, 2];
+            }
+        }
         /// <summary>赞助弹窗词条（其余语言回退英文）。</summary>
         private static void AddDonate()
         {
