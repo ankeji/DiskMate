@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+
 permissions:
   contents: write
 
@@ -21,35 +22,24 @@ jobs:
         shell: cmd
         run: DiskMate.exe --selftest
 
+      - name: Collect release notes from the tag
+        shell: cmd
+        run: git tag -l --format="%(contents)" ${{ github.ref_name }} > release-notes.txt
+
       - name: Generate version.txt
         shell: cmd
         run: >-
           DiskMate.exe
-          --writeversion=version.txt
-          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/DiskMate.exe"
+          --writeversion=version.txt|https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/DiskMate.exe|@release-notes.txt
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           name: DiskMate ${{ github.ref_name }}
+          body_path: release-notes.txt
           files: |
             DiskMate.exe
             version.txt
-          body: |
-            ## DiskMate ${{ github.ref_name }}
-
-            ### 安装 / Install
-            下载 `DiskMate.exe` 直接运行（单文件，无需安装，需 .NET Framework 4.x）。
-            Download `DiskMate.exe` and run it — single file, no installer, requires .NET Framework 4.x.
-
-            ### 应用内更新 / In-app update
-            老版本会在启动时提示，或点左下角「检查更新」一键升级，无需重新下载安装包。
-            Older builds show a prompt on startup, or use "Check for updates" at the bottom left.
-
-            ### 校验 / Verify
-            ```
-            sha256: 见 version.txt / see version.txt
-            ```
 
       - name: Commit version.txt to main
         shell: cmd

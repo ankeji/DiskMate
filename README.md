@@ -243,6 +243,7 @@ D:\other\DiskMate\
 ├── screenshot-update.png   更新弹窗
 ├── version.txt             更新清单（发版时由 CLI / CI 生成）
 ├── LICENSE                 MIT
+├── docs\                   发版说明模板 / 各版本更新内容
 ├── .github\workflows\      build.yml（CI）· release.yml（打 tag 自动发版）
 ├── scripts\                push.bat（推送）· release.ps1（一键发版）
 ├── src\

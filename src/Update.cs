@@ -89,28 +89,42 @@ namespace DiskMate
             error = null;
             UpdateInfo best = null;
             var errors = new List<string>();
+            int reachable = 0;
 
-            UpdateInfo a = TrySource(ManifestUrl, errors);
+            bool ok1;
+            UpdateInfo a = TrySource(ManifestUrl, errors, out ok1);
+            if (ok1) reachable++;
             if (a != null) best = a;
 
-            UpdateInfo b = TrySource(ReleaseApi, errors);
-            if (b != null && (best == null || ParseVersion(b.Version) > ParseVersion(best.Version))) best = b;
+            bool ok2;
+            UpdateInfo b = TrySource(ReleaseApi, errors, out ok2);
+            if (ok2) reachable++;
+            if (b != null)
+            {
+                bool newer = best == null || ParseVersion(b.Version) > ParseVersion(best.Version);
+                bool betterNotes = best != null && ParseVersion(b.Version) == ParseVersion(best.Version)
+                                   && best.Notes.Length == 0 && b.Notes.Length > 0;
+                if (newer || betterNotes) best = b;
+            }
 
             if (best != null) return best;
-            if (errors.Count > 0) error = string.Join("; ", errors.ToArray());
+            // 只要有一个源成功访问且没给出更高版本，就是「已是最新」，不算失败
+            if (reachable == 0 && errors.Count > 0) error = string.Join("; ", errors.ToArray());
             return null;
         }
 
         public static UpdateInfo Check(string url, out string error)
         {
             var errors = new List<string>();
-            UpdateInfo info = TrySource(url, errors);
-            error = errors.Count > 0 ? errors[0] : null;
+            bool ok;
+            UpdateInfo info = TrySource(url, errors, out ok);
+            error = (!ok || (info == null && errors.Count > 0)) && errors.Count > 0 ? errors[0] : null;
             return info;
         }
 
-        private static UpdateInfo TrySource(string url, List<string> errors)
+        private static UpdateInfo TrySource(string url, List<string> errors, out bool reachable)
         {
+            reachable = false;
             if (Disabled || string.IsNullOrEmpty(url)) return null;
             if (url.IndexOf("example.com", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -120,6 +134,7 @@ namespace DiskMate
             try
             {
                 string text = FetchText(url, url == ReleaseApi);
+                reachable = true;
                 UpdateInfo info = text.TrimStart().StartsWith("{")
                     ? FromGitHubRelease(text, url)
                     : FromManifest(text, url);
@@ -399,6 +414,12 @@ namespace DiskMate
         /// </summary>
         public static string WriteManifest(string path, string exeUrl, string notesZh, string notesEn)
         {
+            // 说明支持 @文件：CI 里直接把 tag 注释文件丢进来，避免多行参数转义
+            if (!string.IsNullOrEmpty(notesZh) && notesZh[0] == '@')
+            {
+                notesZh = File.ReadAllText(notesZh.Substring(1), Encoding.UTF8).Trim();
+                if (string.IsNullOrEmpty(notesEn)) notesEn = notesZh;
+            }
             string exe = Application.ExecutablePath;
             var fi = new FileInfo(exe);
             var sb = new StringBuilder();
