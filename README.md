@@ -325,3 +325,20 @@ case "mycache":
 - 扫描读的是文件大小，与「资源管理器显示的占用」可能有少量差异（硬链接、稀疏文件）
 - 应用内更新是整包替换：exe 只有约 300 KB，没做增量差分；放在无写权限目录、或用户拒绝 UAC 时替换会失败并留下 `*.failed` 记录
 - 更新只覆盖 exe 本体，`settings.ini` / 日志 / 用户数据都保留
+
+## 十三、赞助
+
+DiskMate 是个人项目：免费、无广告、无捆绑、不收集任何数据。如果它帮你腾出了几十 G，可以请作者喝杯咖啡。
+
+<p align="center">
+  <img src="zhifubao.jpg" width="240" alt="支付宝收款码">
+  <img src="weixin.jpg" width="240" alt="微信收款码">
+</p>
+
+<p align="center">左：支付宝　·　右：微信（点开扫码）</p>
+
+海外朋友 / Outside mainland China：
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
+
+赞助不附带任何义务，也不影响功能 —— 所有功能对所有人一样开放。

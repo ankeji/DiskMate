@@ -8,5 +8,7 @@
 *.cs   text eol=crlf
 *.manifest text eol=crlf
 *.png  binary
+*.jpg  binary
+*.jpeg binary
 *.ico  binary
 *.exe  binary

@@ -82,6 +82,21 @@ DiskMate/
 └── README*.md              10 種語言說明
 ```
 
+## 贊助
+
+DiskMate 是個人專案：免費、無廣告、無綁定、不收集任何資料。若它幫你清出幾十 GB，可以請作者喝杯咖啡。
+
+<p align="center">
+  <img src="zhifubao.jpg" width="240" alt="支付寶收款碼">
+  <img src="weixin.jpg" width="240" alt="微信收款碼">
+</p>
+
+<p align="center">左：支付寶　·　右：微信（點開掃碼）</p>
+
+海外朋友 / Outside mainland China：
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
+
 ## 授權
 
 MIT，見 [LICENSE](LICENSE)。

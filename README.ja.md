@@ -82,6 +82,12 @@ DiskMate/
 └── README*.md              10 言語のドキュメント
 ```
 
+## サポート
+
+DiskMate は個人開発の無料ツールです（広告なし・同梱ソフトなし・データ収集なし）。何十 GB か空いたら、コーヒーを一杯おごっていただけると励みになります:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
+
 ## ライセンス
 
 MIT（[LICENSE](LICENSE) 参照）。

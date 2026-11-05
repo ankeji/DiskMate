@@ -82,6 +82,12 @@ DiskMate/
 └── README*.md              documentação em 10 idiomas
 ```
 
+## Apoiar o projeto
+
+DiskMate é um projeto pessoal e gratuito: sem anúncios, sem programas incluídos, sem coleta de dados. Se ele liberou algumas dezenas de gigabytes, você pode me pagar um café:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/T1S42A3IBF)
+
 ## Licença
 
 MIT — veja [LICENSE](LICENSE).
