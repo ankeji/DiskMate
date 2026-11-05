@@ -235,7 +235,7 @@ CI：`.github/workflows/build.yml` 每次 push 编译 + 自检；`.github/workfl
 ## 九、目录结构
 
 ```
-D:\other\DiskMate\
+DiskMate/
 ├── DiskMate.exe            编译产物（双击运行）
 ├── app.ico                 程序图标（由 --makeicon 生成，构建时嵌入）
 ├── build.bat               一键编译（csc，无依赖）
