@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        shell: cmd
+        run: build.bat /nopause
+
+      - name: Self test (renders + overlap + i18n checks)
+        shell: cmd
+        run: DiskMate.exe --selftest
+
+      - name: Language coverage
+        shell: cmd
+        run: DiskMate.exe --langtest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DiskMate
+          path: |
+            DiskMate.exe
+            screenshot.png
+            screenshot-results.png

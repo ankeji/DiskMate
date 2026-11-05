@@ -1,0 +1,11 @@
+# DiskMate update manifest
+# 程序启动静默检查 / 手动点「检查更新」都读这个文件（raw 地址，无频率限制）
+# 发版流程见 README「应用内更新」：改 AppInfo.Version → build.bat → 打 tag → 上传 exe
+# 字段说明：version 必填；url 可绝对可相对；sha256 填了强校验；notes.<lang> 用 \n 换行
+version=2.1.0
+url=https://github.com/ankeji/DiskMate/releases/download/v2.1.0/DiskMate.exe
+sha256=0C26A3724DDD27449566199E167E3DCD33C13073ADD0239053D58B3466480E14
+size=340480
+date=2026-11-05
+notes.zh=1. 首个公开版本：体检式扫描、应用内更新、10 种界面语言\n2. 三页布局：清理体检 / 大文件 / 日志
+notes.en=1. First public release: scan-on-demand, in-app updates, 10 UI languages\n2. Three pages: clean check, large files, log

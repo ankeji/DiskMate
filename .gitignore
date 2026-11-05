@@ -1,0 +1,23 @@
+# build output
+DiskMate.exe
+_build.exe
+_t.exe
+app.ico
+*.pdb
+
+# runtime artifacts
+update-cache/
+settings.ini
+debug.log
+*.failed
+
+# test / temp
+_test/
+*.bundle
+_render-*.png
+diskmate-selftest.txt
+
+# IDE
+.vs/
+*.suo
+*.user
