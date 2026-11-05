@@ -4,5 +4,5 @@ url=https://github.com/ankeji/DiskMate/releases/download/v2.2.0/DiskMate.exe
 sha256=C15BF623EFDB641C37DBE045BC1665679BA29D02E9AA4C93DBA05D3F4E49347D
 size=815616
 date=2026-11-05
-notes.zh=(contents)
-notes.en=(contents)
+notes.zh=## DiskMate v2.2.0\n\n1. 新增软件内赞助入口：左下角「赞助支持」，中文界面显示支付宝 / 微信收款码，海外语言显示 Ko-fi\n2. 收款码内嵌进 exe（仍是单文件），点击可用系统看图工具放大\n3. 修复检查更新在部分网络下误报「检查更新失败」的问题（任一更新源可用即正常判断）\n4. README 补齐 10 种语言的赞助说明
+notes.en=## DiskMate v2.2.0\n\n1. New in-app support entry: "Support" at the bottom left — Alipay / WeChat QR codes for Chinese UI, Ko-fi for other languages\n2. QR images are embedded in the exe (still a single file); click one to open it full size\n3. Fixed a false "check for updates failed" message on some networks (one reachable source is now enough)\n4. README updated with sponsorship info in all 10 languages

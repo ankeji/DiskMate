@@ -22,9 +22,14 @@ jobs:
         shell: cmd
         run: DiskMate.exe --selftest
 
-      - name: Collect release notes from the tag
+      - name: Collect release notes
         shell: cmd
-        run: git tag -l --format="%(contents)" ${{ github.ref_name }} > release-notes.txt
+        run: |
+          if exist "docs\release-notes-${{ github.ref_name }}.md" (
+            copy /y "docs\release-notes-${{ github.ref_name }}.md" release-notes.txt >nul
+          ) else (
+            git tag -l -n 9999 "${{ github.ref_name }}" > release-notes.txt
+          )
 
       - name: Generate version.txt
         shell: cmd
