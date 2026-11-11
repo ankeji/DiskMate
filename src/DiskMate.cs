@@ -431,19 +431,66 @@ namespace DiskMate
 
         public static long DirSize(string path) { return DirSize(path, null); }
 
-        public static long ClearDir(string dir, StringBuilder log)
+        // 可删性统计：只把"现在就能删掉"的字节算进 Free，被占用/无权限的单列
+        public class FreeStat { public long Free; public long BlockedBytes; public int Blocked; }
+
+        public static FreeStat Measurable(string dir, Func<bool> cancel)
         {
-            long freed = 0;
-            int skipped = 0;
-            if (!Directory.Exists(dir)) return 0;
+            var st = new FreeStat();
+            MeasureTree(dir, st, cancel);
+            return st;
+        }
+
+        private static void MeasureTree(string dir, FreeStat st, Func<bool> cancel)
+        {
+            if (cancel != null && cancel()) throw new OperationCanceledException();
             string[] files;
             try { files = Directory.GetFiles(dir); } catch { files = new string[0]; }
             foreach (string f in files)
             {
+                long len = 0;
+                try { len = new FileInfo(f).Length; } catch { }
+                bool ok = false;
                 try
                 {
-                    long len = 0;
-                    try { len = new FileInfo(f).Length; } catch { }
+                    using (new FileStream(f, FileMode.Open, FileAccess.Read, FileShare.None)) { }
+                    ok = true;
+                }
+                catch { }
+                if (ok) st.Free += len;
+                else { st.Blocked++; st.BlockedBytes += len; }
+            }
+            string[] dirs;
+            try { dirs = Directory.GetDirectories(dir); } catch { dirs = new string[0]; }
+            foreach (string d in dirs)
+            {
+                try { if ((new DirectoryInfo(d).Attributes & FileAttributes.ReparsePoint) != 0) continue; }
+                catch { }
+                MeasureTree(d, st, cancel);
+            }
+        }
+
+        public static long ClearDir(string dir, StringBuilder log)
+        {
+            if (!Directory.Exists(dir)) return 0;
+            int skipped = 0;
+            long freed = ClearTree(dir, ref skipped);
+            if (log != null && skipped > 0) log.AppendLine("    跳过占用中的项目 " + skipped + " 个");
+            return freed;
+        }
+
+        // 逐文件删除并计费：某个文件被占用不影响同目录其它文件，也不会让整棵子树白删
+        private static long ClearTree(string dir, ref int skipped)
+        {
+            long freed = 0;
+            string[] files;
+            try { files = Directory.GetFiles(dir); } catch { files = new string[0]; }
+            foreach (string f in files)
+            {
+                long len = 0;
+                try { len = new FileInfo(f).Length; } catch { }
+                try
+                {
                     File.SetAttributes(f, FileAttributes.Normal);
                     File.Delete(f);
                     freed += len;
@@ -454,16 +501,180 @@ namespace DiskMate
             try { dirs = Directory.GetDirectories(dir); } catch { dirs = new string[0]; }
             foreach (string d in dirs)
             {
-                try
-                {
-                    long len = DirSize(d);
-                    Directory.Delete(d, true);
-                    freed += len;
-                }
+                bool link = false;
+                try { link = (new DirectoryInfo(d).Attributes & FileAttributes.ReparsePoint) != 0; }
+                catch { }
+                if (link) continue;             // 不跟进符号链接/联接点
+                freed += ClearTree(d, ref skipped);
+                try { Directory.Delete(d, false); }
                 catch { skipped++; }
             }
-            if (log != null && skipped > 0) log.AppendLine("    跳过占用中的项目 " + skipped + " 个");
             return freed;
+        }
+
+        // ============================================================ recycle bin
+        public static string[] FixedDriveRoots()
+        {
+            var list = new List<string>();
+            try
+            {
+                foreach (DriveInfo d in DriveInfo.GetDrives())
+                {
+                    try
+                    {
+                        if (d.DriveType != DriveType.Fixed) continue;
+                        if (!d.IsReady) continue;
+                        list.Add(d.RootDirectory.FullName);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return list.ToArray();
+        }
+
+        // 所有固定磁盘回收站的总占用（含其它账户 SID 目录）
+        public static long RecycleBinSize()
+        {
+            long total = 0;
+            foreach (string root in FixedDriveRoots()) total += DirSize(Path.Combine(root, "$Recycle.Bin"));
+            return total;
+        }
+
+        public class RecycleStat
+        {
+            public long Total;
+            public long OrphanBytes;
+            public int OrphanCount;
+            public int DriveCount;
+        }
+
+        // $Rxxx 的学习：回收站里每个条目是 $R<id> 数据 + $I<id> 元数据（原始路径/删除时间）。
+        // 资源管理器只显示有 $I 的条目，缺 $I 的 $R 条目叫孤儿：盘上占着空间，但界面上看不到。
+        // 与资源管理器保持同一口径：Total 只统计有 $I 的条目，孤儿单列在 Orphan 字段、不计入。
+        public static RecycleStat RecycleBinReport()
+        {
+            var st = new RecycleStat();
+            foreach (string root in FixedDriveRoots())
+            {
+                string bin = Path.Combine(root, "$Recycle.Bin");
+                if (!Directory.Exists(bin)) continue;
+                long indexed = 0;
+                foreach (string sid in SafeDirs(bin))
+                {
+                    foreach (string f in SafeFiles(sid))
+                    {
+                        if (!IsPayload(f)) continue;
+                        long len = 0;
+                        try { len = new FileInfo(f).Length; } catch { }
+                        if (File.Exists(MetaOf(f))) indexed += len;
+                        else { st.OrphanBytes += len; st.OrphanCount++; }
+                    }
+                    foreach (string d in SafeDirs(sid))
+                    {
+                        if (!IsPayload(d)) continue;
+                        long len = DirSize(d);
+                        if (File.Exists(MetaOf(d))) indexed += len;
+                        else { st.OrphanBytes += len; st.OrphanCount++; }
+                    }
+                }
+                st.Total += indexed;
+                if (indexed > 0) st.DriveCount++;
+            }
+            return st;
+        }
+
+        private static bool IsPayload(string path)
+        {
+            string n = Path.GetFileName(path);
+            return n.Length > 2 && n.StartsWith("$R", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string MetaOf(string payload)
+        {
+            string name = Path.GetFileName(payload);
+            if (name.Length < 2) return payload;
+            return Path.Combine(Path.GetDirectoryName(payload), "$I" + name.Substring(2));
+        }
+
+        private static string[] SafeDirs(string dir)
+        {
+            try { return Directory.GetDirectories(dir); } catch { return new string[0]; }
+        }
+
+        private static string[] SafeFiles(string dir)
+        {
+            try { return Directory.GetFiles(dir); } catch { return new string[0]; }
+        }
+
+        public static long TotalFree()
+        {
+            long total = 0;
+            foreach (string root in FixedDriveRoots())
+            {
+                try { total += new DriveInfo(root).AvailableFreeSpace; } catch { }
+            }
+            return total;
+        }
+
+        // 逐盘清空回收站：先走 Shell API，再对被跳过的残留（其它账户的 SID 目录、被占用的项目）直接删除
+        public static long EmptyRecycleBins(StringBuilder log)
+        {
+            long before = RecycleBinSize();
+            foreach (string root in FixedDriveRoots())
+            {
+                try
+                {
+                    int hr = Native.SHEmptyRecycleBin(IntPtr.Zero, root,
+                        Native.SHERB_NOCONFIRMATION | Native.SHERB_NOPROGRESSUI | Native.SHERB_NOSOUND);
+                    if (hr != 0 && log != null) log.AppendLine("    回收站 " + root + " Shell 返回 0x" + hr.ToString("X8"));
+                }
+                catch (Exception ex)
+                {
+                    if (log != null) log.AppendLine("    回收站 " + root + " Shell 失败：" + ex.Message);
+                }
+            }
+            foreach (string root in FixedDriveRoots())
+            {
+                string bin = Path.Combine(root, "$Recycle.Bin");
+                if (!Directory.Exists(bin)) continue;
+                string[] sids;
+                try { sids = Directory.GetDirectories(bin); } catch { continue; }
+                foreach (string sid in sids) ClearRecycleFolder(sid, log);
+            }
+            long after = RecycleBinSize();
+            return Math.Max(0, before - after);
+        }
+
+        private static void ClearRecycleFolder(string dir, StringBuilder log)
+        {
+            string[] files;
+            try { files = Directory.GetFiles(dir); } catch { files = new string[0]; }
+            foreach (string f in files)
+            {
+                try
+                {
+                    File.SetAttributes(f, FileAttributes.Normal);
+                    File.Delete(f);
+                }
+                catch { if (log != null) log.AppendLine("    占用中跳过：" + Path.GetFileName(f)); }
+            }
+            string[] dirs;
+            try { dirs = Directory.GetDirectories(dir); } catch { dirs = new string[0]; }
+            foreach (string d in dirs)
+            {
+                try
+                {
+                    try
+                    {
+                        foreach (FileInfo fi in new DirectoryInfo(d).GetFiles("*", SearchOption.AllDirectories))
+                            try { fi.Attributes = FileAttributes.Normal; } catch { }
+                    }
+                    catch { }
+                    Directory.Delete(d, true);
+                }
+                catch { if (log != null) log.AppendLine("    占用中跳过：" + Path.GetFileName(d)); }
+            }
         }
 
         public static int Run(string file, string args, StringBuilder sink, Encoding enc, int timeoutMs)

@@ -49,18 +49,25 @@ namespace DiskMate
             cap.Text = I18n.T("update.notes");
             Controls.Add(cap);
 
+            var notesHost = new Panel();
+            notesHost.BackColor = Theme.Bg;
+            notesHost.Location = new Point(Theme.P(30), Theme.P(116));
+            notesHost.Size = new Size(w - Theme.P(60), Theme.P(108));
+            Controls.Add(notesHost);
+
             var notes = new TextBox();
             notes.Multiline = true;
             notes.ReadOnly = true;
-            notes.ScrollBars = ScrollBars.Vertical;
+            notes.ScrollBars = ScrollBars.Vertical;   // 原生条被宿主裁掉，滚轮仍可用
             notes.BorderStyle = BorderStyle.FixedSingle;
             notes.BackColor = Theme.Bg;
             notes.ForeColor = Theme.TextSub;
             notes.Font = Theme.Base;
-            notes.Location = new Point(Theme.P(30), Theme.P(116));
-            notes.Size = new Size(w - Theme.P(60), Theme.P(108));
+            notes.Location = new Point(0, 0);
+            notes.Size = new Size(notesHost.Width + SystemInformation.VerticalScrollBarWidth, notesHost.Height);
             notes.Text = string.IsNullOrEmpty(info.Notes) ? "-" : info.Notes;
-            Controls.Add(notes);
+            notesHost.Controls.Add(notes);
+            new FlatScrollbar(notesHost, new TextBoxSource(notes));
 
             lblStatus = new Label();
             lblStatus.AutoSize = false;

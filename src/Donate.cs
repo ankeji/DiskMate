@@ -175,8 +175,7 @@ namespace DiskMate
             catch { return null; }
         }
 
-        private static Image LoadImage(string name)
-        {
+        internal static Image LoadImage(string name)        {
             try
             {
                 byte[] data = ResourceBytes(name);
@@ -189,7 +188,7 @@ namespace DiskMate
         }
 
         /// <summary>点收款码：把内嵌原图释放到临时目录，用系统看图工具打开（可放大）。</summary>
-        private static void OpenEmbedded(string name)
+        internal static void OpenEmbedded(string name)
         {
             try
             {

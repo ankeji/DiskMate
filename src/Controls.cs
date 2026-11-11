@@ -572,6 +572,7 @@ namespace DiskMate
         public int SortColumn = 2;
         public bool SortDesc = true;
         private int hover = -1;
+        private FlatScrollbar scroll;
 
         public ItemList()
         {
@@ -593,6 +594,56 @@ namespace DiskMate
             Columns.Add(I18n.T("col.size"), 104, HorizontalAlignment.Right);
             Columns.Add(I18n.T("col.risk"), 88, HorizontalAlignment.Center);
             SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            ListViewFit.Attach(this, 0, 28);   // 名称列吸收剩余宽度，不出现横向滚动条
+        }
+
+        /// <summary>
+        /// 挂到宿主容器：列表比宿主宽一个滚动条宽度，原生滚动条落到宿主边界外被裁掉，
+        /// 功能（滚轮/拖动/键盘）全部保留，视觉上由 FlatScrollbar 接管。
+        /// </summary>
+        internal void AttachHost(Control host)
+        {
+            if (host == null) return;
+            Dock = DockStyle.None;
+            if (!host.Controls.Contains(this)) host.Controls.Add(this);
+            host.Resize += delegate(object s, EventArgs e) { LayoutInHost(host); };
+            LayoutInHost(host);
+            scroll = new FlatScrollbar(host, new ListViewSource(this));
+        }
+
+        private void LayoutInHost(Control host)
+        {
+            int sb = SystemInformation.VerticalScrollBarWidth;
+            Bounds = new Rectangle(0, 0, host.ClientSize.Width + sb, host.ClientSize.Height);
+        }
+
+        internal int HoverIndex { get { return hover; } }
+
+        // 自检用：验证滚轮 → 位置 → LVM_SCROLL 整条链路真的能滚
+        internal string TestScrollProbe()
+        {
+            var src = new ListViewSource(this);
+            int p0 = src.Position();
+            int max = src.Maximum();
+            if (max <= 0) return "scroll: 内容未溢出，跳过（pos=" + p0 + " max=" + max + "）";
+            scroll.Wheel(-120);
+            int p1 = src.Position();
+            scroll.Wheel(120);
+            int p2 = src.Position();
+            src.ScrollTo(max);
+            int p3 = src.Position();
+            src.ScrollTo(0);
+            int p4 = src.Position();
+            string ov = "overlay=" + (scroll == null ? "无" : (scroll.Visible ? "显示" : "隐藏") + " " + scroll.Bounds);
+            return "scroll: pos=" + p0 + " max=" + max + " 下=" + p1 + " 上=" + p2 + " 到底=" + p3 + " 回顶=" + p4 + "  " + ov;
+        }
+
+        // 行背景色（OnDrawItem 与滚动条覆盖带共用同一套配色，保证右缘覆盖条与行对齐）
+        internal Color RowColor(int idx)
+        {
+            if (SelectedIndices.Count > 0 && SelectedIndices[0] == idx) return Theme.PrimarySoft;
+            if (idx == hover) return Color.FromArgb(249, 251, 255);
+            return idx % 2 == 1 ? Color.FromArgb(252, 253, 255) : Theme.Surface;
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -679,9 +730,7 @@ namespace DiskMate
         protected override void OnDrawItem(DrawListViewItemEventArgs e)
         {
             var g = e.Graphics;
-            bool selected = (e.State & ListViewItemStates.Selected) != 0;
-            Color back = selected ? Theme.PrimarySoft : (e.ItemIndex == hover ? Color.FromArgb(249, 251, 255)
-                : (e.ItemIndex % 2 == 1 ? Color.FromArgb(252, 253, 255) : Theme.Surface));
+            Color back = RowColor(e.ItemIndex);
             using (var b = new SolidBrush(back))
                 g.FillRectangle(b, e.Bounds);
             using (var pen = new Pen(Color.FromArgb(241, 243, 247)))

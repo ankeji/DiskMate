@@ -191,7 +191,6 @@ namespace DiskMate
 
             var list = new ItemList();
             list.ShowCheckBoxes = false;
-            list.Dock = DockStyle.Fill;
             list.Columns[0].Width = Theme.P(300);
             list.Columns[1].Width = Theme.P(90);
             list.Columns[2].Width = Theme.P(90);
@@ -201,8 +200,8 @@ namespace DiskMate
             host.Dock = DockStyle.Fill;
             host.BackColor = Theme.Surface;
             card.Controls.Add(host);
-            list.Dock = DockStyle.Fill;
             host.Controls.Add(list);
+            list.AttachHost(host);   // 扁平滚动条
 
             foreach (CleanItem it in items)
             {

@@ -23,6 +23,7 @@ namespace DiskMate
         private FlatButton btnLang;
         private FlatButton btnUpdate;
         private FlatButton btnDonate;
+        private FlatButton btnContact;
         private UpdateInfo pendingUpdate;
         private bool checkingUpdate;
         private DiskMeter dmC, dmD;
@@ -59,6 +60,8 @@ namespace DiskMate
         private ItemList lvItems;
         private CardPanel detailCard;
         private Panel detailScroll;
+        private Panel detailScrollHost;
+        private FlatScrollbar detailScrollBar;
         private Label lblDetName, lblDetSize, lblDetImpact, lblDetAdvice, lblDetPath;
         private Badge badgeDetRisk;
         private FlatButton btnDetToggle, btnOpenFolder;
@@ -190,6 +193,14 @@ namespace DiskMate
             btnDonate.Text = I18n.T("donate.btn");
             btnDonate.Click += delegate { DonateDialog.Show(this); };
             sidebar.Controls.Add(btnDonate);
+
+            btnContact = new FlatButton();
+            btnContact.Kind = BtnKind.Ghost;
+            btnContact.Size = new Size(Theme.P(184), Theme.P(26));
+            btnContact.Font = Theme.Small;
+            btnContact.Text = I18n.T("contact.btn");
+            btnContact.Click += delegate { ContactDialog.Show(this); };
+            sidebar.Controls.Add(btnContact);
 
             dmC = new DiskMeter(); dmC.Letter = 'C';
             dmD = new DiskMeter(); dmD.Letter = 'D';
@@ -366,6 +377,11 @@ namespace DiskMate
                 btnDonate.Width = sidebar.Width - Theme.P(36);
                 btnDonate.Location = new Point(Theme.P(18), y + Theme.P(78));
             }
+            if (btnContact != null)
+            {
+                btnContact.Width = sidebar.Width - Theme.P(36);
+                btnContact.Location = new Point(Theme.P(18), y + Theme.P(108));
+            }
 
             // 底部区：版本 → 权限 → D 盘 → C 盘，从下往上依次堆叠，间距与控件高度都随 DPI 缩放
             int meterH = DiskMeter.PreferredHeight;
@@ -383,7 +399,7 @@ namespace DiskMate
             int dmCY = dmDY - Theme.P(4) - meterH;
 
             // 垂直空间不足时不显示磁盘条（例如小屏 + 200% 缩放），避免和上方按钮叠在一起
-            int limit = (btnDonate != null ? btnDonate.Bottom : Theme.P(300)) + Theme.P(10);
+            int limit = (btnContact != null ? btnContact.Bottom : (btnDonate != null ? btnDonate.Bottom : Theme.P(300))) + Theme.P(10);
             bool roomForMeters = dmCY >= limit;
             dmC.Visible = roomForMeters;
             dmD.Visible = roomForMeters;
@@ -530,6 +546,7 @@ namespace DiskMate
             if (btnLang != null) btnLang.Text = LangText();
             UpdateButtonText();
             if (btnDonate != null) btnDonate.Text = I18n.T("donate.btn");
+            if (btnContact != null) btnContact.Text = I18n.T("contact.btn");
             if (lblAdmin != null) lblAdmin.Text = IsAdmin() ? I18n.T("admin.yes") : I18n.T("admin.no");
             if (btnRescan != null) btnRescan.Text = I18n.T("btn.rescan");
             if (lblEmpty != null) lblEmpty.Text = all.Count == 0 ? I18n.T("empty.none") : I18n.T("empty.filter");
@@ -792,18 +809,29 @@ namespace DiskMate
         private void AddDir(List<CleanItem> list, string key, string name, string cat, string[] dirs, string note)
         {
             if (dirs == null) return;
-            long total = 0;
+            long total = 0, blockedBytes = 0;
+            int blocked = 0;
             var valid = new List<string>();
             foreach (string d in dirs)
             {
                 if (scanCancel) throw new OperationCanceledException();
                 if (string.IsNullOrEmpty(d) || !Directory.Exists(d)) continue;
-                long s = Engine.DirSize(d, delegate { return scanCancel; });
-                if (s <= 0) continue;
-                total += s;
+                // 只统计"现在就能删"的大小，被占用的文件不计入（否则会出现显示 100 MB、清理释放 0）
+                Engine.FreeStat fs = Engine.Measurable(d, delegate { return scanCancel; });
+                if (fs.Free <= 0)
+                {
+                    blockedBytes += fs.BlockedBytes;
+                    blocked += fs.Blocked;
+                    continue;
+                }
+                total += fs.Free;
+                blockedBytes += fs.BlockedBytes;
+                blocked += fs.Blocked;
                 valid.Add(d);
             }
             if (valid.Count == 0) return;
+            if (blocked > 0)
+                note = note + "；另有 " + Theme.Fmt(blockedBytes) + " 被占用(" + blocked + " 个文件)无法删除，未计入";
             var it = new CleanItem
             {
                 Key = key,
@@ -900,7 +928,7 @@ namespace DiskMate
             {
                 var log = new StringBuilder();
                 long freed = 0;
-                long before = Engine.FreeOf(Environment.SystemDirectory);
+                long before = Engine.TotalFree();
                 int count = chosen.Count;
 
                 for (int i = 0; i < count; i++)
@@ -921,7 +949,7 @@ namespace DiskMate
                     }
                     catch (Exception ex) { lock (log) log.AppendLine("    失败：" + ex.Message); }
                 }
-                long after = Engine.FreeOf(Environment.SystemDirectory);
+                long after = Engine.TotalFree();
 
                 var remain = new Dictionary<CleanItem, long>();
                 foreach (CleanItem it in chosen)
@@ -931,12 +959,22 @@ namespace DiskMate
                     {
                         if (it.Kind == "dir")
                         {
-                            foreach (string t in it.Targets) r += Engine.DirSize(t);
+                            // 与扫描同口径：只统计还能删的字节，被占用部分不显示（避免"显示有大小、清理释放 0"）
+                            foreach (string t in it.Targets)
+                            {
+                                try { r += Engine.Measurable(t, null).Free; }
+                                catch { }
+                            }
                         }
                         else if (it.Kind == "hiber")
                         {
                             string hf = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "hiberfil.sys");
                             r = File.Exists(hf) ? it.Size : 0;
+                        }
+                        else if (it.Kind == "recycle")
+                        {
+                            try { r = Engine.RecycleBinReport().Total; }
+                            catch { r = 0; }
                         }
                     }
                     catch { }
@@ -956,9 +994,11 @@ namespace DiskMate
                     BindItems();
                     ShowPhase(1);
                     if (log.Length > 0) Log(log.ToString().TrimEnd());
-                    Log(string.Format("清理完成：释放 {0}，可用空间增加 {1}", Theme.Fmt(freed), Theme.Fmt(Math.Max(0, after - before))));
+                    long delta = Math.Max(0, after - before);
+                    if (delta <= 0 && freed > 0) delta = freed;   // 期间有其它进程写盘时，用实际删除量兜底
+                    Log(string.Format("清理完成：释放 {0}，可用空间增加 {1}", Theme.Fmt(freed), Theme.Fmt(delta)));
                     ShowBanner(BannerKind.Success,
-                        I18n.F("toast.cleanDone", Theme.Fmt(freed), Theme.Fmt(Math.Max(0, after - before))), 12);
+                        I18n.F("toast.cleanDone", Theme.Fmt(freed), Theme.Fmt(delta)), 12);
                 });
             }, TaskCreationOptions.LongRunning);
         }
@@ -970,19 +1010,31 @@ namespace DiskMate
                 case "dir":
                     {
                         long freed = 0;
-                        foreach (string t in it.Targets) freed += Engine.ClearDir(t, log);
+                        foreach (string t in it.Targets)
+                        {
+                            long b = 0, a = 0;
+                            try { b = Engine.DirSize(t); } catch { }
+                            long del = Engine.ClearDir(t, log);
+                            try { a = Engine.DirSize(t); } catch { }
+                            freed += Math.Max(del, Math.Max(0, b - a));   // 以目录实际缩小量为准
+                        }
                         return freed;
                     }
                 case "recycle":
                     {
-                        long before = Engine.FreeOf(Environment.SystemDirectory);
-                        Native.SHEmptyRecycleBin(IntPtr.Zero, null,
-                            Native.SHERB_NOCONFIRMATION | Native.SHERB_NOPROGRESSUI | Native.SHERB_NOSOUND);
-                        return Math.Max(0, Engine.FreeOf(Environment.SystemDirectory) - before);
+                        long f = Engine.EmptyRecycleBins(log);
+                        long remain = 0;
+                        try { remain = Engine.RecycleBinReport().Total; }
+                        catch { }
+                        if (log != null && remain > 0) log.AppendLine("    回收站仍显示 " + Theme.Fmt(remain) + "（条目被占用或无权限删除）");
+                        return f;
                     }
                 case "hiber":
-                    Engine.Run("powercfg.exe", "-h off", log, null, 60000);
-                    return it.Size;
+                    {
+                        Engine.Run("powercfg.exe", "-h off", log, null, 60000);
+                        string hf = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "hiberfil.sys");
+                        return File.Exists(hf) ? 0 : it.Size;   // 关不掉就如实返回 0
+                    }
                 case "drivers":
                     return PruneDrivers(log);
                 default:
@@ -1392,9 +1444,29 @@ namespace DiskMate
             }
         }
 
-        /// <summary>自检：所有可见控件必须在父容器内，文字不得溢出控件宽度（DPI 缩放回归用）。</summary>
-        public string TestTextFit()
+        /// <summary>自检用：验证列表滚动链路（滚轮 → 位置 → LVM_SCROLL）。</summary>
+        public string TestScrollProbe()
         {
+            string lv = lvItems == null ? "scroll: 无列表" : lvItems.TestScrollProbe();
+            string dt = "detail: 无面板";
+            if (detailScrollBar != null && detailScroll is ScrollPanel)
+            {
+                var src = new PanelSource((ScrollPanel)detailScroll);
+                detailScrollBar.Sync();
+                int d0 = src.Position();
+                src.ScrollTo(src.Maximum());
+                int d1 = src.Position();
+                src.ScrollTo(0);
+                int d2 = src.Position();
+                dt = "detail: pos=" + d0 + " max=" + src.Maximum() + " 到底=" + d1 + " 回顶=" + d2
+                    + " overlay=" + (detailScrollBar.Visible ? "显示" : "隐藏") + " " + detailScrollBar.Bounds
+                    + " host=" + detailScrollHost.Bounds + " panel=" + detailScroll.Bounds;
+            }
+            return lv + "  |  " + dt;
+        }
+
+        /// <summary>自检：所有可见控件必须在父容器内，文字不得溢出控件宽度（DPI 缩放回归用）。</summary>
+        public string TestTextFit()        {
             var sb = new StringBuilder();
             int bad = 0;
             List<Control> all = new List<Control>();
@@ -1405,7 +1477,12 @@ namespace DiskMate
                 Rectangle r = c.Bounds;
                 Rectangle pc = c.Parent.ClientRectangle;
                 bool allowOverflow = c.Parent is ScrollableControl && ((ScrollableControl)c.Parent).AutoScroll;
-                if (!allowOverflow && (r.Right > pc.Width + Theme.P(2) || r.Bottom > pc.Height + Theme.P(2) || r.Left < -Theme.P(2) || r.Top < -Theme.P(2)))
+                // 扁平滚动条方案：列表/滚动面板故意比宿主宽一个滚动条宽度，让原生条被裁掉
+                bool scrollClip = (c is ItemList || c is ScrollPanel)
+                    && r.Width - pc.Width <= SystemInformation.VerticalScrollBarWidth
+                    && r.Height <= pc.Height + Theme.P(2)
+                    && r.Left >= -Theme.P(2) && r.Top >= -Theme.P(2);
+                if (!allowOverflow && !scrollClip && (r.Right > pc.Width + Theme.P(2) || r.Bottom > pc.Height + Theme.P(2) || r.Left < -Theme.P(2) || r.Top < -Theme.P(2)))
                 {
                     sb.AppendLine("  CLIP " + Name(c) + " " + r + " 超出父容器 " + pc);
                     bad++;

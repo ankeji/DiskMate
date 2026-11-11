@@ -18,8 +18,8 @@ echo [1/3] Building bootstrap (no icon) ...
   /win32manifest:"src\app.manifest" ^
   /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll ^
   /out:"_build.exe" ^
-  "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" ^
-  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs"
+  "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" "src\FlatScroll.cs" ^
+  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs"
 
 if errorlevel 1 (
   echo.
@@ -34,11 +34,11 @@ echo [2/3] Generating app.ico ...
 echo [3/3] Building DiskMate.exe with icon ...
 "%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 ^
   /win32manifest:"src\app.manifest" /win32icon:"app.ico" ^
-  /resource:"weixin.jpg" /resource:"zhifubao.jpg" ^
+  /resource:"weixin.jpg" /resource:"zhifubao.jpg" /resource:"contact.jpg" ^
   /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll ^
   /out:"DiskMate.exe" ^
-  "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" ^
-  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs"
+  "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" "src\FlatScroll.cs" ^
+  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs"
 
 if errorlevel 1 (
   echo.

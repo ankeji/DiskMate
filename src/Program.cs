@@ -12,17 +12,19 @@ namespace DiskMate
         [STAThread]
         public static void Main(string[] args)
         {
-            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false;
+            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false, cleanProbe = false;
             string installTest = null;
             string dialogTest = null;
             string writeVersion = null;
             string donateTest = null;
+            string contactTest = null;
             string outPath = null;
             foreach (string a in args)
             {
                 if (a.StartsWith("--update-url=", StringComparison.OrdinalIgnoreCase))
                     UpdateService.ManifestUrl = a.Substring("--update-url=".Length);
                 else if (string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)) selfTest = true;
+                else if (string.Equals(a, "--cleanprobe", StringComparison.OrdinalIgnoreCase)) cleanProbe = true;
                 else if (string.Equals(a, "--makeicon", StringComparison.OrdinalIgnoreCase)) makeIcon = true;
                 else if (string.Equals(a, "--langtest", StringComparison.OrdinalIgnoreCase)) langTest = true;
                 else if (string.Equals(a, "--checkupdate", StringComparison.OrdinalIgnoreCase)) checkUpdate = true;
@@ -31,6 +33,7 @@ namespace DiskMate
                 else if (a.StartsWith("--updatedialog=", StringComparison.OrdinalIgnoreCase)) dialogTest = a.Substring("--updatedialog=".Length);
                 else if (a.StartsWith("--writeversion=", StringComparison.OrdinalIgnoreCase)) writeVersion = a.Substring("--writeversion=".Length);
                 else if (a.StartsWith("--donatedialog=", StringComparison.OrdinalIgnoreCase)) donateTest = a.Substring("--donatedialog=".Length);
+                else if (a.StartsWith("--contactdialog=", StringComparison.OrdinalIgnoreCase)) contactTest = a.Substring("--contactdialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
             }
 
@@ -38,6 +41,13 @@ namespace DiskMate
             {
                 UpdateService.Disabled = true;
                 RunSelfTest();
+                return;
+            }
+
+            if (cleanProbe)
+            {
+                UpdateService.Disabled = true;
+                RunCleanProbe();
                 return;
             }
 
@@ -111,6 +121,15 @@ namespace DiskMate
                 if (dt.Length > 1) I18n.Lang = dt[1];
                 DonateDialog.RenderTo(dt[0]);
                 Console.WriteLine("donate dialog rendered: " + dt[0] + "  lang=" + I18n.Lang);
+                return;
+            }
+            if (contactTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                string[] ct = contactTest.Split('|');
+                if (ct.Length > 1) I18n.Lang = ct[1];
+                ContactDialog.RenderTo(ct[0]);
+                Console.WriteLine("contact dialog rendered: " + ct[0] + "  lang=" + I18n.Lang);
                 return;
             }
             if (writeVersion != null)
@@ -196,6 +215,86 @@ namespace DiskMate
         }
 
         /// <summary>
+        /// 清理引擎诊断：只在临时目录造数据做真实删除，不碰用户的任何文件。
+        /// 用法：DiskMate.exe --cleanprobe
+        /// </summary>
+        private static void RunCleanProbe()
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            Console.WriteLine("DiskMate cleanprobe  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            Console.WriteLine("admin: " + (IsAdmin() ? "yes" : "no"));
+
+            string root = Path.Combine(Path.GetTempPath(), "diskmate-probe");
+            try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
+            Directory.CreateDirectory(Path.Combine(root, "sub", "deep"));
+            byte[] buf = new byte[1024 * 1024];
+            new Random(1).NextBytes(buf);
+            File.WriteAllBytes(Path.Combine(root, "a.bin"), buf);
+            File.WriteAllBytes(Path.Combine(root, "sub", "b.bin"), buf);
+            File.WriteAllBytes(Path.Combine(root, "sub", "deep", "c.bin"), buf);
+            string locked = Path.Combine(root, "locked.bin");
+            File.WriteAllBytes(locked, buf);
+            File.SetAttributes(Path.Combine(root, "sub", "b.bin"), FileAttributes.ReadOnly);
+
+            long before = Engine.DirSize(root);
+            using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Engine.FreeStat st = Engine.Measurable(root, null);
+                Console.WriteLine("Measurable: 可删=" + Theme.Fmt(st.Free) + "  占用=" + Theme.Fmt(st.BlockedBytes) + "(" + st.Blocked + " 个)");
+                var log = new StringBuilder();
+                long freed = Engine.ClearDir(root, log);
+                long after = Engine.DirSize(root);
+                Console.WriteLine("ClearDir : before=" + Theme.Fmt(before) + "  freed=" + Theme.Fmt(freed) + "  after=" + Theme.Fmt(after));
+                Console.WriteLine("log      : " + (log.Length == 0 ? "(空)" : log.ToString().Trim()));
+                Console.WriteLine("期望     : 可删 == freed，after == 占用大小");
+            }
+            try { Directory.Delete(root, true); } catch { }
+
+            Console.WriteLine();
+            Console.WriteLine("--- 现有扫描项的可删性（只探测，不删除）---");
+            using (var form = new MainForm())
+            {
+                List<CleanItem> items = form.SelfTestScan();
+                foreach (CleanItem it in items)
+                {
+                    if (it.Kind != "dir") continue;
+                    int files = 0, lockedCount = 0;
+                    long bytes = 0;
+                    foreach (string t in it.Targets) ProbeTree(t, ref files, ref lockedCount, ref bytes);
+                    Console.WriteLine(string.Format("  {0,-24} {1,10}  文件 {2,6}  占用 {3,5}  可删 {4}",
+                        it.Name, Theme.Fmt(it.Size), files, lockedCount, Theme.Fmt(bytes)));
+                }
+            }
+            Console.WriteLine("done");
+        }
+
+        private static void ProbeTree(string dir, ref int files, ref int locked, ref long bytes)
+        {
+            string[] fs;
+            try { fs = Directory.GetFiles(dir); } catch { fs = new string[0]; }
+            foreach (string f in fs)
+            {
+                files++;
+                long len = 0;
+                try { len = new FileInfo(f).Length; } catch { }
+                try
+                {
+                    using (new FileStream(f, FileMode.Open, FileAccess.Read, FileShare.None)) { }
+                    bytes += len;
+                }
+                catch { locked++; }
+            }
+            string[] ds;
+            try { ds = Directory.GetDirectories(dir); } catch { ds = new string[0]; }
+            foreach (string d in ds)
+            {
+                try { if ((new DirectoryInfo(d).Attributes & FileAttributes.ReparsePoint) != 0) continue; }
+                catch { }
+                ProbeTree(d, ref files, ref locked, ref bytes);
+            }
+        }
+
+        /// <summary>
         /// 无界面自检：跑一遍完整扫描，再把「欢迎页」和「结果页」各渲染成 PNG。
         /// 不删除任何文件。用法：DiskMate.exe --selftest
         /// </summary>
@@ -230,6 +329,7 @@ namespace DiskMate
                         SaveShot(form, Path.Combine(baseDir, "screenshot.png"), sb, "welcome");
                         form.TestShowResults(items);
                         sb.AppendLine(form.TestLayoutDump());
+                        sb.AppendLine(form.TestScrollProbe());
                         sb.AppendLine("--- text fit (default size) ---");
                         sb.AppendLine(form.TestTextFit());
                         sb.AppendLine("--- overlap check (default size) ---");

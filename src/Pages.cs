@@ -368,7 +368,6 @@ namespace DiskMate
             listCard.Controls.Add(listHost);
 
             lvItems = new ItemList();
-            lvItems.Dock = DockStyle.Fill;
             lvItems.SelectedIndexChanged += delegate { UpdateDetail(); };
             lvItems.CheckedChanged += delegate { UpdateSelection(); UpdateDetail(); };
             lvItems.ColumnClick += delegate(object s, ColumnClickEventArgs e)
@@ -386,6 +385,7 @@ namespace DiskMate
                 UpdateDetail();
             };
             listHost.Controls.Add(lvItems);
+            lvItems.AttachHost(listHost);   // 原生滚动条移到宿主边界外由裁剪隐藏
 
             lblEmpty = new Label();
             lblEmpty.AutoSize = false;
@@ -447,11 +447,20 @@ namespace DiskMate
 
         private void BuildDetailPanel()
         {
-            detailScroll = new Panel();
+            detailScrollHost = new Panel();
+            detailScrollHost.BackColor = Theme.Surface;
+            detailCard.Controls.Add(detailScrollHost);
+
+            detailScroll = new ScrollPanel();   // 原生滚动条被宿主裁掉，视觉由 FlatScrollbar 接管
             detailScroll.BackColor = Theme.Surface;
             detailScroll.AutoScroll = true;
-            detailScroll.Location = new Point(Theme.P(22), Theme.P(16));
-            detailCard.Controls.Add(detailScroll);
+            detailScrollHost.Controls.Add(detailScroll);
+            detailScrollBar = new FlatScrollbar(detailScrollHost, new PanelSource((ScrollPanel)detailScroll));
+            detailScrollHost.Resize += delegate
+            {
+                int sb = SystemInformation.VerticalScrollBarWidth;
+                detailScroll.SetBounds(0, 0, detailScrollHost.ClientSize.Width + sb, detailScrollHost.ClientSize.Height);
+            };
 
             var cap = SectionLabel(""); Txt(cap, "det.title");
             cap.Location = new Point(Theme.P(0), Theme.P(0));
@@ -554,7 +563,9 @@ namespace DiskMate
             if (btnDetToggle.Visible) bottom = btnDetToggle.Top - 14;
             int h = bottom - Theme.P(14);
             if (h < Theme.P(60)) h = Theme.P(60);
-            detailScroll.SetBounds(Theme.P(22), Theme.P(14), w, h);
+            detailScrollHost.SetBounds(Theme.P(22), Theme.P(14), w, h);
+            int sb = SystemInformation.VerticalScrollBarWidth;
+            detailScroll.SetBounds(0, 0, w + sb, h);
 
             int inner = Math.Max(80, w - 18);
             lblDetName.Width = inner;
@@ -627,9 +638,20 @@ namespace DiskMate
             lvBig.Columns.Add(I18n.T("big.colsize"), Theme.P(110), HorizontalAlignment.Right);
             lvBig.Columns.Add(I18n.T("big.colpath"), Theme.P(700));
             lvBig.DoubleClick += delegate { RevealBigFile(); };
-            card.Controls.Add(lvBig);
-
-            pageBig.Resize += delegate
+            var bigHost = new Panel();
+            bigHost.Dock = DockStyle.Fill;
+            bigHost.BackColor = Theme.Surface;
+            card.Controls.Add(bigHost);
+            lvBig.Dock = DockStyle.None;
+            bigHost.Controls.Add(lvBig);
+            int sbw = SystemInformation.VerticalScrollBarWidth;
+            bigHost.Resize += delegate
+            {
+                lvBig.Bounds = new Rectangle(0, 0, bigHost.ClientSize.Width + sbw, bigHost.ClientSize.Height);
+            };
+            lvBig.Bounds = new Rectangle(0, 0, bigHost.Width + sbw, bigHost.Height);
+            new FlatScrollbar(bigHost, new ListViewSource(lvBig));
+            ListViewFit.Attach(lvBig, 1, 20);   // 路径列吸收剩余宽度            pageBig.Resize += delegate
             {
                 bar.SetBounds(Theme.P(0), Theme.P(0), pageBig.Width, Theme.P(62));
                 card.SetBounds(Theme.P(0), Theme.P(62), pageBig.Width, Math.Max(Theme.P(120), pageBig.Height - Theme.P(62)));
@@ -869,22 +891,20 @@ namespace DiskMate
             }));
             steps.Add(new ScanStep(I18n.T("step.recycle"), delegate(List<CleanItem> l)
             {
-                long rb = 0;
-                try { rb = Engine.DirSize(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "$Recycle.Bin")); }
+                Engine.RecycleStat rs = null;
+                try { rs = Engine.RecycleBinReport(); }
                 catch { }
-                if (rb > 0)
+                if (rs == null || rs.Total <= 0) return;   // 只统计资源管理器可见的条目，无索引残留不计入
+                l.Add(new CleanItem
                 {
-                    l.Add(new CleanItem
-                    {
-                        Key = "recycle",
-                        CatKey = "sys",
-                        Name = "回收站",
-                        Category = "系统",
-                        Size = rb,
-                        Note = "清空后无法恢复",
-                        Kind = "recycle"
-                    });
-                }
+                    Key = "recycle",
+                    CatKey = "sys",
+                    Name = "回收站",
+                    Category = "系统",
+                    Size = rs.Total,
+                    Note = "清空后无法恢复",
+                    Kind = "recycle"
+                });
             }));
             steps.Add(new ScanStep(I18n.T("step.hiber"), delegate(List<CleanItem> l)
             {

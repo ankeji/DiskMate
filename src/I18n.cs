@@ -100,6 +100,11 @@ namespace DiskMate
                 { "zh-CN", "donate.kofi", "海外 · 用 Ko-fi" },
                 { "zh-CN", "donate.kofiHint", "中国大陆以外可用 Ko-fi 赞助：" },
                 { "zh-CN", "donate.close", "关闭" },
+                { "zh-CN", "contact.btn", "联系我们" },
+                { "zh-CN", "contact.title", "联系我们" },
+                { "zh-CN", "contact.sub", "扫码添加作者微信，问题反馈、功能建议都可以直接说。" },
+                { "zh-CN", "contact.hint", "点图片可放大，用微信「扫一扫」识别" },
+                { "zh-CN", "contact.close", "关闭" },
 
                 { "zh-TW", "donate.btn", "贊助支持" },
                 { "zh-TW", "donate.title", "支持 DiskMate" },
@@ -110,6 +115,11 @@ namespace DiskMate
                 { "zh-TW", "donate.kofi", "海外 · 用 Ko-fi" },
                 { "zh-TW", "donate.kofiHint", "中國大陸以外可用 Ko-fi 贊助：" },
                 { "zh-TW", "donate.close", "關閉" },
+                { "zh-TW", "contact.btn", "聯絡我們" },
+                { "zh-TW", "contact.title", "聯絡我們" },
+                { "zh-TW", "contact.sub", "掃碼加入作者微信，問題回報、功能建議都可以直接說。" },
+                { "zh-TW", "contact.hint", "點圖片可放大，用微信「掃一掃」辨識" },
+                { "zh-TW", "contact.close", "關閉" },
 
                 { "en-US", "donate.btn", "Support" },
                 { "en-US", "donate.title", "Support DiskMate" },
@@ -119,7 +129,12 @@ namespace DiskMate
                 { "en-US", "donate.scanHint", "Scan to donate any amount; click an image to zoom" },
                 { "en-US", "donate.kofi", "Buy me a coffee" },
                 { "en-US", "donate.kofiHint", "Ko-fi opens in your browser:" },
-                { "en-US", "donate.close", "Close" }
+                { "en-US", "donate.close", "Close" },
+                { "en-US", "contact.btn", "Contact" },
+                { "en-US", "contact.title", "Contact us" },
+                { "en-US", "contact.sub", "Scan to add the author on WeChat for bug reports and feature requests." },
+                { "en-US", "contact.hint", "Click the image to zoom, then scan it in WeChat" },
+                { "en-US", "contact.close", "Close" }
             };
 
             for (int i = 0; i < rows.GetLength(0); i++)
