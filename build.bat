@@ -19,7 +19,8 @@ echo [1/3] Building bootstrap (no icon) ...
   /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll ^
   /out:"_build.exe" ^
   "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" "src\FlatScroll.cs" ^
-  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs"
+  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs" ^
+  "src\Api.cs" "src\Session.cs" "src\AccountDialog.cs" "src\WeChat.cs"
 
 if errorlevel 1 (
   echo.
@@ -38,7 +39,8 @@ echo [3/3] Building DiskMate.exe with icon ...
   /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll ^
   /out:"DiskMate.exe" ^
   "src\DiskMate.cs" "src\Controls.cs" "src\Dialogs.cs" "src\I18n.cs" "src\LangMore.cs" "src\Logo.cs" "src\Json.cs" "src\Update.cs" "src\UpdateDialog.cs" "src\FlatScroll.cs" ^
-  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs"
+  "src\Pages.cs" "src\MainForm.cs" "src\Program.cs" "src\Donate.cs" "src\Contact.cs" ^
+  "src\Api.cs" "src\Session.cs" "src\AccountDialog.cs" "src\WeChat.cs"
 
 if errorlevel 1 (
   echo.

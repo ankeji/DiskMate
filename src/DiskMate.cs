@@ -159,6 +159,39 @@ namespace DiskMate
             catch { }
             return null;
         }
+        /// <summary>写入 settings.ini 一项（保留其它键，AppData 优先）。</summary>
+        public static void WriteSetting(string key, string value)
+        {
+            try
+            {
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DiskMate");
+                string p = Path.Combine(dir, "settings.ini");
+                Directory.CreateDirectory(dir);
+
+                var lines = new List<string>();
+                bool replaced = false;
+                if (File.Exists(p))
+                {
+                    foreach (string line in File.ReadAllLines(p, Encoding.UTF8))
+                    {
+                        int i = line.IndexOf('=');
+                        if (i > 0 && line.Substring(0, i).Trim() == key)
+                        {
+                            lines.Add(key + "=" + value);
+                            replaced = true;
+                        }
+                        else if (line.Trim().Length > 0)
+                        {
+                            lines.Add(line);
+                        }
+                    }
+                }
+                if (!replaced) lines.Add(key + "=" + value);
+                File.WriteAllText(p, string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine, Encoding.UTF8);
+            }
+            catch { }
+        }
+
         private static float DetectScale()
         {
             try
@@ -385,6 +418,40 @@ namespace DiskMate
                     case "sparkle":
                         g.DrawLine(pen, ox + 8f * s, oy + 2f * s, ox + 8f * s, oy + 14f * s);
                         g.DrawLine(pen, ox + 2f * s, oy + 8f * s, ox + 14f * s, oy + 8f * s);
+                        break;
+                    case "chat":
+                        // 对话气泡 + 三个点：问题反馈
+                        g.DrawLines(pen, new[]
+                        {
+                            new PointF(ox + 4.4f * s, oy + 3.2f * s),
+                            new PointF(ox + 11.6f * s, oy + 3.2f * s),
+                            new PointF(ox + 13.2f * s, oy + 4.8f * s),
+                            new PointF(ox + 13.2f * s, oy + 9.6f * s),
+                            new PointF(ox + 11.6f * s, oy + 11.2f * s),
+                            new PointF(ox + 7.4f * s, oy + 11.2f * s),
+                            new PointF(ox + 5.6f * s, oy + 13.4f * s),
+                            new PointF(ox + 5f * s, oy + 11.2f * s),
+                            new PointF(ox + 3.4f * s, oy + 11.2f * s),
+                            new PointF(ox + 2.8f * s, oy + 9.6f * s),
+                            new PointF(ox + 2.8f * s, oy + 4.8f * s),
+                            new PointF(ox + 4.4f * s, oy + 3.2f * s)
+                        });
+                        g.FillEllipse(brush, ox + 5.2f * s, oy + 6.9f * s, 1.7f * s, 1.7f * s);
+                        g.FillEllipse(brush, ox + 7.6f * s, oy + 6.9f * s, 1.7f * s, 1.7f * s);
+                        g.FillEllipse(brush, ox + 10f * s, oy + 6.9f * s, 1.7f * s, 1.7f * s);
+                        break;
+                    case "broom":
+                        // 扫帚：微信专清
+                        g.DrawLine(pen, ox + 12.2f * s, oy + 2.2f * s, ox + 8.6f * s, oy + 7.2f * s);
+                        g.DrawPolygon(pen, new[]
+                        {
+                            new PointF(ox + 9.0f * s, oy + 6.6f * s),
+                            new PointF(ox + 4.6f * s, oy + 8.4f * s),
+                            new PointF(ox + 5.4f * s, oy + 13.8f * s),
+                            new PointF(ox + 12.0f * s, oy + 10.6f * s)
+                        });
+                        g.DrawLine(pen, ox + 5.4f * s, oy + 11.0f * s, ox + 9.8f * s, oy + 8.6f * s);
+                        g.DrawLine(pen, ox + 7.2f * s, oy + 9.2f * s, ox + 7.8f * s, oy + 12.4f * s);
                         break;
                 }
             }

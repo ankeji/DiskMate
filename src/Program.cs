@@ -12,18 +12,22 @@ namespace DiskMate
         [STAThread]
         public static void Main(string[] args)
         {
-            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false, cleanProbe = false;
+            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false, cleanProbe = false, maskProbe = false;
             string installTest = null;
             string dialogTest = null;
             string writeVersion = null;
             string donateTest = null;
             string contactTest = null;
+            string wechatTest = null;
+            string authTest = null;
+            string accountTest = null;
             string outPath = null;
             foreach (string a in args)
             {
                 if (a.StartsWith("--update-url=", StringComparison.OrdinalIgnoreCase))
                     UpdateService.ManifestUrl = a.Substring("--update-url=".Length);
                 else if (string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)) selfTest = true;
+                else if (string.Equals(a, "--maskprobe", StringComparison.OrdinalIgnoreCase)) maskProbe = true;
                 else if (string.Equals(a, "--cleanprobe", StringComparison.OrdinalIgnoreCase)) cleanProbe = true;
                 else if (string.Equals(a, "--makeicon", StringComparison.OrdinalIgnoreCase)) makeIcon = true;
                 else if (string.Equals(a, "--langtest", StringComparison.OrdinalIgnoreCase)) langTest = true;
@@ -34,6 +38,9 @@ namespace DiskMate
                 else if (a.StartsWith("--writeversion=", StringComparison.OrdinalIgnoreCase)) writeVersion = a.Substring("--writeversion=".Length);
                 else if (a.StartsWith("--donatedialog=", StringComparison.OrdinalIgnoreCase)) donateTest = a.Substring("--donatedialog=".Length);
                 else if (a.StartsWith("--contactdialog=", StringComparison.OrdinalIgnoreCase)) contactTest = a.Substring("--contactdialog=".Length);
+                else if (a.StartsWith("--wechatdialog=", StringComparison.OrdinalIgnoreCase)) wechatTest = a.Substring("--wechatdialog=".Length);
+                else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
+                else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
             }
 
@@ -41,6 +48,14 @@ namespace DiskMate
             {
                 UpdateService.Disabled = true;
                 RunSelfTest();
+                return;
+            }
+
+            if (maskProbe)
+            {
+                UpdateService.Disabled = true;
+                try { Native.AttachConsole(-1); } catch { }
+                RunMaskProbe();
                 return;
             }
 
@@ -132,6 +147,29 @@ namespace DiskMate
                 Console.WriteLine("contact dialog rendered: " + ct[0] + "  lang=" + I18n.Lang);
                 return;
             }
+            if (wechatTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                string[] wt = wechatTest.Split('|');
+                if (wt.Length > 1) I18n.Lang = wt[1];
+                WeChatDialog.RenderTo(wt[0]);
+                Console.WriteLine("wechat dialog rendered: " + wt[0] + "  lang=" + I18n.Lang);
+                return;
+            }
+            if (authTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                RunAuthProbe(authTest);
+                return;
+            }
+            if (accountTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                string[] at = accountTest.Split('|');
+                AccountDialog.RenderTo(at[0], at.Length > 1 ? at[1] : "login");
+                Console.WriteLine("account dialog rendered: " + at[0]);
+                return;
+            }
             if (writeVersion != null)
             {
                 try { Native.AttachConsole(-1); } catch { }
@@ -212,6 +250,73 @@ namespace DiskMate
                     .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
             }
             catch { return false; }
+        }
+
+        /// <summary>
+        /// 账号链路自检：真的走 HTTP 打通「图形验证码 → 登录 → me → 刷新」。
+        /// 用法：DiskMate.exe --authtest=邮箱|密码
+        /// </summary>
+        private static void RunAuthProbe(string spec)
+        {
+            Api.LoadConfig();
+            Console.WriteLine("api.base = " + Api.BaseUrl);
+            string[] parts = spec.Split('|');
+            string email = parts.Length > 0 ? parts[0] : "";
+            string password = parts.Length > 1 ? parts[1] : "";
+
+            int ok = 0, bad = 0;
+            Action<string, bool, string> check = delegate(string name, bool pass, string detail)
+            {
+                if (pass) { ok++; Console.WriteLine("  [OK]   " + name + (detail.Length > 0 ? "  " + detail : "")); }
+                else { bad++; Console.WriteLine("  [FAIL] " + name + "  " + detail); }
+            };
+
+            ApiResult mode = Api.Get("/api/captcha/mode", null);
+            check("验证码模式", mode.Ok, mode.Ok ? mode.DataStr("mode") : mode.Message);
+
+            ApiResult cap = Api.Get("/api/captcha/numeric", null);
+            Image img = cap.Ok ? Api.DecodeDataUrl(cap.DataStr("image")) : null;
+            check("拉取图形验证码", cap.Ok && img != null,
+                img == null ? cap.Message : img.Width + "x" + img.Height);
+
+            ApiResult login = Api.Post("/api/auth/login",
+                "{\"email\":\"" + Session.Escape(email) + "\",\"password\":\"" + Session.Escape(password) + "\"}", null);
+            check("登录", login.Ok, login.Ok ? "" : login.Message);
+
+            if (login.Ok)
+            {
+                Session.Clear();
+                Session.Apply(login.Data);
+                check("保存登录态", Session.IsLoggedIn, Session.Email + " #" + Session.UserId);
+
+                ApiResult me = Session.AuthedGet("/api/auth/me");
+                check("带 token 取 /me", me.Ok, me.Ok ? MiniJson.Str(MiniJson.Obj(me.Data == null ? null : Get(me.Data, "user")), "email") : me.Message);
+
+                string oldRefresh = Session.RefreshToken;
+                bool refreshed = Session.TryRefresh();
+                check("refreshToken 续期", refreshed && Session.RefreshToken != oldRefresh, refreshed ? "" : "续期失败");
+
+                ApiResult after = Session.AuthedGet("/api/auth/me");
+                check("续期后仍可取 /me", after.Ok, after.Ok ? "" : after.Message);
+                Session.Clear();
+            }
+
+            ApiResult wrong = Api.Post("/api/auth/login",
+                "{\"email\":\"" + Session.Escape(email) + "\",\"password\":\"definitely-wrong-1\"}", null);
+            check("错误密码提示可读", !wrong.Ok && wrong.Message.Length > 0 && wrong.Message != "请求失败（401）", wrong.Message);
+
+            ApiResult offline = Api.Send("GET", "/api/nope-not-exist", null, null);
+            check("404 也能拿到结构化错误", offline.Status == 404 && offline.Code == "NOT_FOUND", offline.Code);
+
+            Console.WriteLine();
+            Console.WriteLine("结果：通过 " + ok + " · 失败 " + bad);
+            Environment.ExitCode = bad == 0 ? 0 : 1;
+        }
+
+        private static object Get(Dictionary<string, object> d, string key)
+        {
+            object v;
+            return d != null && d.TryGetValue(key, out v) ? v : null;
         }
 
         /// <summary>
@@ -349,6 +454,23 @@ namespace DiskMate
                         Application.DoEvents();
                         SaveShot(form, Path.Combine(baseDir, "_render-small.png"), sb, "results-small");
 
+                        sb.AppendLine("--- big files page ---");
+                        form.TestShowBig();
+                        sb.AppendLine(form.TestTextFit());
+                        sb.AppendLine(form.TestOverlaps());
+                        form.Refresh();
+                        Application.DoEvents();
+                        SaveShot(form, Path.Combine(baseDir, "_render-big.png"), sb, "big");
+
+                        sb.AppendLine("--- wechat page ---");
+                        form.TestShowWeChat();
+                        Application.DoEvents();
+                        sb.AppendLine(form.TestTextFit());
+                        sb.AppendLine(form.TestOverlaps());
+                        form.Refresh();
+                        Application.DoEvents();
+                        SaveShot(form, Path.Combine(baseDir, "_render-wechat-page.png"), sb, "wechat");
+
                         form.Hide();
                         sb.AppendLine("render: ok");
 
@@ -390,6 +512,48 @@ namespace DiskMate
             }
             Console.WriteLine(sb.ToString());
             Console.WriteLine("written: " + path);
+        }
+
+        /// <summary>
+        /// 遮罩 + 模态弹窗链路自检：打开→自动关闭→再打开，验证 ModalMask 不再抛
+        /// “未启用的窗体不能显示为模式对话框”，且主窗口关闭后恢复可用。
+        /// </summary>
+        private static void RunMaskProbe()
+        {
+            try
+            {
+                using (var main = new MainForm())
+                {
+                    main.Show();
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(200);
+                    Application.DoEvents();
+
+                    for (int round = 1; round <= 2; round++)
+                    {
+                        using (var dlg = new DialogShell())
+                        {
+                            dlg.ClientSize = new Size(320, 200);
+                            dlg.Text = "mask probe";
+                            var t = new System.Windows.Forms.Timer();
+                            t.Interval = 700;
+                            t.Tick += delegate { t.Stop(); dlg.DialogResult = DialogResult.Cancel; dlg.Close(); };
+                            t.Start();
+                            DialogResult r = ModalMask.Wrap(main, delegate { return dlg.ShowDialog(main); });
+                            Console.WriteLine("round " + round + ": result=" + r + "  main.Enabled=" + main.Enabled);
+                        }
+                        Application.DoEvents();
+                    }
+                    main.Close();
+                }
+                Console.WriteLine("maskprobe PASS");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("maskprobe FAIL: " + ex.Message);
+                Environment.ExitCode = 1;
+            }
+            Environment.Exit(0);
         }
 
         private static void SaveShot(Form form, string path, StringBuilder sb, string tag)

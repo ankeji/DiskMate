@@ -220,7 +220,31 @@ DiskMate.exe --makeicon app.ico   生成多尺寸图标
 DiskMate.exe --langtest           打印 10 种语言的抽查词条
 ```
 
-## 八、从源码编译
+## 八、账号（可选）
+
+侧边栏底部的「登录 / 注册」对接 `DiskMate-admin` 账号服务（Node + MySQL，见该目录 README）。
+
+- 注册：邮箱 → 图形验证码（4 位数字）→ 获取邮箱验证码 → 设置密码（8 位以上，含字母和数字）
+- 登录：邮箱 + 密码；连续失败多次时服务端会要求图形验证码
+- 登录态存在 `%LOCALAPPDATA%\DiskMate\session.ini`，只保存 refreshToken，到期自动续期；删除该文件即退出
+
+后端地址默认 `http://127.0.0.1:8099`，可在 `settings.ini`（`%LOCALAPPDATA%\DiskMate\settings.ini` 或 exe 同目录）里改：
+
+```ini
+lang=zh-CN
+api.base=https://your-server.example.com
+```
+
+自检命令：
+
+```
+DiskMate.exe --authtest=邮箱|密码        真的走一遍 HTTP：验证码 → 登录 → /me → 刷新令牌
+DiskMate.exe --accountdialog=out.png|register   渲染账号弹窗（login / register / logged）
+```
+
+账号服务没启动也不影响清理功能，只是侧边栏显示「登录 / 注册」且点击会提示连不上。
+
+## 九、从源码编译
 
 需要 Windows 自带的 .NET Framework 4.x（Win10/11 默认都有）：
 
@@ -245,7 +269,7 @@ scripts\push.bat
 
 CI：`.github/workflows/build.yml` 每次 push 编译 + 自检；`.github/workflows/release.yml` 打 `v*` tag 时自动发 Release。
 
-## 九、目录结构
+## 十、目录结构
 
 ```
 DiskMate/
@@ -272,6 +296,9 @@ DiskMate/
 │   ├── Logo.cs             品牌标志绘制 + 多尺寸 ICO 生成
 │   ├── Update.cs           版本号 / 清单解析 / 下载 / SHA-256 校验 / 替换脚本
 │   ├── UpdateDialog.cs     更新弹窗（版本对比 + 更新说明 + 下载进度）
+│   ├── Api.cs              账号服务 HTTP 客户端（HttpWebRequest + MiniJson）
+│   ├── Session.cs          登录态存取与 refreshToken 自动续期
+│   ├── AccountDialog.cs    账号弹窗（登录 / 注册 / 图形验证码 / 已登录）
 │   ├── Donate.cs           赞助弹窗（内嵌收款码 / Ko-fi 链接）
 │   ├── Pages.cs            三个页面的构建 + 扫描步骤表 + 风险表
 │   ├── MainForm.cs         外壳、导航、语言切换、扫描与清理流程、排序筛选
@@ -281,7 +308,7 @@ DiskMate/
 └── README.zh-TW / .en / .ja / .ko / .de / .fr / .es / .pt / .ru.md   其他语言
 ```
 
-## 十、代码结构
+## 十一、代码结构
 
 | 成员 | 作用 |
 |---|---|
@@ -324,7 +351,7 @@ case "mycache":
 // 4. （可选）I18n.cs 里补 item.mycache.name / .impact / .advice 三个词条，界面即可多语言
 ```
 
-## 十一、安全边界
+## 十二、安全边界
 
 - 只删**缓存与临时文件**目录内容，不碰 `Documents`、`Desktop`、`Pictures`、聊天记录、已安装程序
 - 驱动只删重复旧版本，**不使用 `/force` / `/uninstall`**，正在使用的驱动由系统拒绝
@@ -332,7 +359,7 @@ case "mycache":
 - 扫描阶段只读文件大小，不写、不删、不移动
 - 每一步写入日志；未捕获异常写入 `crash-yyyyMMdd-HHmmss.log`，便于定位
 
-## 十二、已知限制
+## 十三、已知限制
 
 - 浏览器缓存需先退出浏览器，否则被占用的文件会被跳过（日志会写跳过数量）
 - `WinSxS\Temp` 属于 TrustedInstaller，正常管理员也删不掉；DISM 组件清理的独立入口已随「高级清理」页一起删除，需要时手动运行 `dism /Online /Cleanup-Image /StartComponentCleanup`
@@ -342,7 +369,7 @@ case "mycache":
 - 应用内更新是整包替换：exe 只有约 300 KB，没做增量差分；放在无写权限目录、或用户拒绝 UAC 时替换会失败并留下 `*.failed` 记录
 - 更新只覆盖 exe 本体，`settings.ini` / 日志 / 用户数据都保留
 
-## 十三、赞助
+## 十四、赞助
 
 DiskMate 是个人项目：免费、无广告、无捆绑、不收集任何数据。如果它帮你腾出了几十 G，可以请作者喝杯咖啡。
 

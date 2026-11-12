@@ -54,6 +54,7 @@ namespace DiskMate
             AddCommon();
             AddUpdate();
             AddDonate();
+            AddWechat();
             AddDrive();
         }
 
@@ -91,7 +92,7 @@ namespace DiskMate
         {
             string[,] rows =
             {
-                { "zh-CN", "donate.btn", "赞助支持" },
+                { "zh-CN", "donate.btn", "捐赠支持" },
                 { "zh-CN", "donate.title", "支持 DiskMate" },
                 { "zh-CN", "donate.sub", "DiskMate 一直免费、无广告、不收集任何数据。如果它帮你腾出了空间，可以请作者喝杯咖啡。" },
                 { "zh-CN", "donate.alipay", "支付宝" },
@@ -100,13 +101,14 @@ namespace DiskMate
                 { "zh-CN", "donate.kofi", "海外 · 用 Ko-fi" },
                 { "zh-CN", "donate.kofiHint", "中国大陆以外可用 Ko-fi 赞助：" },
                 { "zh-CN", "donate.close", "关闭" },
-                { "zh-CN", "contact.btn", "联系我们" },
-                { "zh-CN", "contact.title", "联系我们" },
+                { "zh-CN", "donate.done", "我已捐赠" },
+                { "zh-CN", "contact.btn", "问题反馈" },
+                { "zh-CN", "contact.title", "问题反馈" },
                 { "zh-CN", "contact.sub", "扫码添加作者微信，问题反馈、功能建议都可以直接说。" },
                 { "zh-CN", "contact.hint", "点图片可放大，用微信「扫一扫」识别" },
                 { "zh-CN", "contact.close", "关闭" },
 
-                { "zh-TW", "donate.btn", "贊助支持" },
+                { "zh-TW", "donate.btn", "捐贈支持" },
                 { "zh-TW", "donate.title", "支持 DiskMate" },
                 { "zh-TW", "donate.sub", "DiskMate 一直免費、無廣告、不收集任何資料。如果它幫你騰出了空間，可以請作者喝杯咖啡。" },
                 { "zh-TW", "donate.alipay", "支付寶" },
@@ -115,13 +117,14 @@ namespace DiskMate
                 { "zh-TW", "donate.kofi", "海外 · 用 Ko-fi" },
                 { "zh-TW", "donate.kofiHint", "中國大陸以外可用 Ko-fi 贊助：" },
                 { "zh-TW", "donate.close", "關閉" },
-                { "zh-TW", "contact.btn", "聯絡我們" },
-                { "zh-TW", "contact.title", "聯絡我們" },
+                { "zh-TW", "donate.done", "我已捐贈" },
+                { "zh-TW", "contact.btn", "問題回報" },
+                { "zh-TW", "contact.title", "問題回報" },
                 { "zh-TW", "contact.sub", "掃碼加入作者微信，問題回報、功能建議都可以直接說。" },
                 { "zh-TW", "contact.hint", "點圖片可放大，用微信「掃一掃」辨識" },
                 { "zh-TW", "contact.close", "關閉" },
 
-                { "en-US", "donate.btn", "Support" },
+                { "en-US", "donate.btn", "Donate" },
                 { "en-US", "donate.title", "Support DiskMate" },
                 { "en-US", "donate.sub", "DiskMate is free, ad-free and collects no data. If it freed up some space for you, you can buy the author a coffee." },
                 { "en-US", "donate.alipay", "Alipay" },
@@ -130,11 +133,90 @@ namespace DiskMate
                 { "en-US", "donate.kofi", "Buy me a coffee" },
                 { "en-US", "donate.kofiHint", "Ko-fi opens in your browser:" },
                 { "en-US", "donate.close", "Close" },
-                { "en-US", "contact.btn", "Contact" },
-                { "en-US", "contact.title", "Contact us" },
+                { "en-US", "donate.done", "I've donated" },
+                { "en-US", "contact.btn", "Feedback" },
+                { "en-US", "contact.title", "Feedback" },
                 { "en-US", "contact.sub", "Scan to add the author on WeChat for bug reports and feature requests." },
                 { "en-US", "contact.hint", "Click the image to zoom, then scan it in WeChat" },
                 { "en-US", "contact.close", "Close" }
+            };
+
+            for (int i = 0; i < rows.GetLength(0); i++)
+            {
+                Dictionary<string, string> d;
+                if (!data.TryGetValue(rows[i, 0], out d))
+                {
+                    d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    data[rows[i, 0]] = d;
+                }
+                d[rows[i, 1]] = rows[i, 2];
+            }
+        }
+
+        /// <summary>微信专清词条（其余语言回退英文）。</summary>
+        private static void AddWechat()
+        {
+            string[,] rows =
+            {
+                { "zh-CN", "wechat.btn", "微信专清" },
+                { "zh-CN", "wechat.title", "微信专清" },
+                { "zh-CN", "wechat.sub", "只清理可再生的缓存，聊天记录不会被动；每个人的微信目录可能不同，可手动指定。" },
+                { "zh-CN", "wechat.path", "微信数据目录" },
+                { "zh-CN", "wechat.detect", "自动检测" },
+                { "zh-CN", "wechat.browse", "选择目录…" },
+                { "zh-CN", "wechat.none", "没找到微信目录，请点「选择目录…」指定你自己的微信文件位置（通常在 文档\\WeChat Files）" },
+                { "zh-CN", "wechat.scanning", "正在扫描缓存…" },
+                { "zh-CN", "wechat.total", "合计" },
+                { "zh-CN", "wechat.clean", "立即清理" },
+                { "zh-CN", "wechat.nothing", "这个目录下没有可清理的缓存" },
+                { "zh-CN", "wechat.pick", "请至少勾选一项" },
+                { "zh-CN", "wechat.done", "已清理 {0}" },
+                { "zh-CN", "wechat.close", "关闭" },
+                { "zh-CN", "login.required", "登录后才能使用该功能" },
+                { "zh-CN", "page.wechat.sub", "独立页面：扫描微信缓存占用，只清可再生文件；聊天记录永远不会被动" },
+                { "zh-CN", "wechat.wip", "开发中…" },
+                { "zh-CN", "wechat.wip.sub", "微信专清正在开发，上线后会在这里直接可用。想早点用上？点下面的按钮催更。" },
+                { "zh-CN", "wechat.nudge", "催更" },
+
+                { "zh-TW", "wechat.btn", "微信專清" },
+                { "zh-TW", "wechat.title", "微信專清" },
+                { "zh-TW", "wechat.sub", "只清理可再生的快取，聊天記錄不會被動；每個人的微信目錄可能不同，可手動指定。" },
+                { "zh-TW", "wechat.path", "微信資料目錄" },
+                { "zh-TW", "wechat.detect", "自動偵測" },
+                { "zh-TW", "wechat.browse", "選擇目錄…" },
+                { "zh-TW", "wechat.none", "沒找到微信目錄，請點「選擇目錄…」指定你自己的微信檔案位置（通常在 文件\\WeChat Files）" },
+                { "zh-TW", "wechat.scanning", "正在掃描快取…" },
+                { "zh-TW", "wechat.total", "合計" },
+                { "zh-TW", "wechat.clean", "立即清理" },
+                { "zh-TW", "wechat.nothing", "這個目錄下沒有可清理的快取" },
+                { "zh-TW", "wechat.pick", "請至少勾選一項" },
+                { "zh-TW", "wechat.done", "已清理 {0}" },
+                { "zh-TW", "wechat.close", "關閉" },
+                { "zh-TW", "login.required", "登入後才能使用該功能" },
+                { "zh-TW", "page.wechat.sub", "獨立頁面：掃描微信快取佔用，只清可再生檔案；聊天記錄永遠不會被動" },
+                { "zh-TW", "wechat.wip", "開發中…" },
+                { "zh-TW", "wechat.wip.sub", "微信專清正在開發，上線後會在這裡直接可用。想早點用上？點下面的按鈕催更。" },
+                { "zh-TW", "wechat.nudge", "催更" },
+
+                { "en-US", "wechat.btn", "WeChat Cleanup" },
+                { "en-US", "wechat.title", "WeChat Cleanup" },
+                { "en-US", "wechat.sub", "Only regenerable caches are removed; chat history is untouched. Everyone's WeChat folder differs, so you can point to yours." },
+                { "en-US", "wechat.path", "WeChat data folder" },
+                { "en-US", "wechat.detect", "Auto detect" },
+                { "en-US", "wechat.browse", "Choose folder…" },
+                { "en-US", "wechat.none", "No WeChat folder found. Click \"Choose folder…\" and pick yours (usually Documents\\WeChat Files)." },
+                { "en-US", "wechat.scanning", "Scanning caches…" },
+                { "en-US", "wechat.total", "Total" },
+                { "en-US", "wechat.clean", "Clean now" },
+                { "en-US", "wechat.nothing", "No cleanable cache in this folder" },
+                { "en-US", "wechat.pick", "Tick at least one item" },
+                { "en-US", "wechat.done", "Freed {0}" },
+                { "en-US", "wechat.close", "Close" },
+                { "en-US", "login.required", "Sign in to use this feature" },
+                { "en-US", "page.wechat.sub", "Dedicated page: scans WeChat cache usage and removes only regenerable files; chat history is never touched" },
+                { "en-US", "wechat.wip", "In development…" },
+                { "en-US", "wechat.wip.sub", "WeChat Cleanup is still being built and will land right here. Want it sooner? Hit the button below to nudge us." },
+                { "en-US", "wechat.nudge", "Nudge us" }
             };
 
             for (int i = 0; i < rows.GetLength(0); i++)
@@ -356,15 +438,10 @@ namespace DiskMate
 
         private static void Save(string code)
         {
-            string text = "lang=" + code + Environment.NewLine;
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath));
-                File.WriteAllText(SettingsPath, text, Encoding.UTF8);
-                return;
-            }
-            catch { }
-            try { File.WriteAllText(FallbackSettingsPath, text, Encoding.UTF8); }
+            // 只更新 lang 一项，保留 settings.ini 里的其它配置（如 wechat.path）
+            Theme.WriteSetting("lang", code);
+            if (File.Exists(SettingsPath)) return;   // 已写进 AppData
+            try { File.WriteAllText(FallbackSettingsPath, "lang=" + code + Environment.NewLine, Encoding.UTF8); }
             catch { }
         }
 
@@ -438,6 +515,7 @@ risk.high|高风险
 big.btn|扫描大文件
 big.scanning|扫描中…
 big.idle|还没有扫描。点击「扫描大文件」列出占用空间最大的文件。
+big.none|没有找到大于 {0} 的文件，换个更小的阈值试试。
 big.progress|正在扫描… 已检查 {0:N0} 个文件，命中 {1} 个
 big.done|检查了 {0:N0} 个文件，找到 {1} 个大于 {2} 的文件（只展示，不删除）
 big.cancel|扫描已取消
@@ -448,6 +526,32 @@ big.th100|100 MB 以上
 big.th200|200 MB 以上
 big.th500|500 MB 以上
 big.th1g|1 GB 以上
+account.title|DiskMate 账号
+account.sub|登录后可同步偏好设置、接收更新提醒
+account.login|登录
+account.register|注册
+account.email|邮箱
+account.email.ph|请输入邮箱地址
+account.password|密码
+account.login.pass.ph|请输入密码
+account.captcha|图形验证码
+account.captcha.ph|图片里的 4 位数字
+account.sendcode|获取验证码
+account.resend|重新获取({0}s)
+account.mailcode|邮箱验证码
+account.mailcode.ph|6 位数字
+account.pass.ph|至少 8 位，含字母和数字
+account.signup|注册并登录
+account.logged|当前登录账号
+account.logout|退出登录
+account.close|关闭
+account.nickname|昵称
+account.nickname.ph|怎么称呼你
+account.identity|身份
+account.identity.student|学生
+account.identity.worker|打工人
+account.identity.other|其他
+account.note|登录状态保存在本机，删除 %LOCALAPPDATA%\DiskMate\session.ini 即退出。
 log.copy|复制全部
 log.open|打开日志目录
 log.clear|清空显示
@@ -611,6 +715,7 @@ risk.high|高風險
 big.btn|掃描大檔案
 big.scanning|掃描中…
 big.idle|還沒有掃描。點擊「掃描大檔案」列出占用空間最大的檔案。
+big.none|沒有找到大於 {0} 的檔案，換個更小的閾值試試。
 big.progress|正在掃描… 已檢查 {0:N0} 個檔案，命中 {1} 個
 big.done|檢查了 {0:N0} 個檔案，找到 {1} 個大於 {2} 的檔案（只顯示，不刪除）
 big.cancel|掃描已取消
@@ -621,6 +726,32 @@ big.th100|100 MB 以上
 big.th200|200 MB 以上
 big.th500|500 MB 以上
 big.th1g|1 GB 以上
+account.title|DiskMate 帳號
+account.sub|登入後可同步偏好設定、接收更新提醒
+account.login|登入
+account.register|註冊
+account.email|電子郵件
+account.email.ph|請輸入電子郵件
+account.password|密碼
+account.login.pass.ph|請輸入密碼
+account.captcha|圖形驗證碼
+account.captcha.ph|圖片裡的 4 位數字
+account.sendcode|取得驗證碼
+account.resend|重新取得({0}s)
+account.mailcode|信箱驗證碼
+account.mailcode.ph|6 位數字
+account.pass.ph|至少 8 位，含字母和數字
+account.signup|註冊並登入
+account.logged|目前登入帳號
+account.logout|登出
+account.close|關閉
+account.nickname|暱稱
+account.nickname.ph|怎麼稱呼你
+account.identity|身分
+account.identity.student|學生
+account.identity.worker|上班族
+account.identity.other|其他
+account.note|登入狀態保存在本機，刪除 %LOCALAPPDATA%\DiskMate\session.ini 即登出。
 log.copy|複製全部
 log.open|開啟日誌資料夾
 log.clear|清空顯示
@@ -784,6 +915,7 @@ risk.high|High risk
 big.btn|Scan large files
 big.scanning|Scanning…
 big.idle|Not scanned yet. Click ""Scan large files"" to list the biggest files.
+big.none|No files larger than {0}. Try a lower threshold.
 big.progress|Scanning… {0:N0} files checked, {1} found
 big.done|Checked {0:N0} files, found {1} larger than {2} (display only, nothing deleted)
 big.cancel|Scan cancelled
@@ -794,6 +926,32 @@ big.th100|Larger than 100 MB
 big.th200|Larger than 200 MB
 big.th500|Larger than 500 MB
 big.th1g|Larger than 1 GB
+account.title|DiskMate Account
+account.sub|Sign in to sync your preferences and get update notices
+account.login|Sign in
+account.register|Sign up
+account.email|Email
+account.email.ph|Enter your email
+account.password|Password
+account.login.pass.ph|Enter your password
+account.captcha|Image code
+account.captcha.ph|4 digits in the image
+account.sendcode|Send code
+account.resend|Resend({0}s)
+account.mailcode|Email code
+account.mailcode.ph|6 digits
+account.pass.ph|8+ chars with letters and digits
+account.signup|Sign up & sign in
+account.logged|Signed in as
+account.logout|Sign out
+account.close|Close
+account.nickname|Nickname
+account.nickname.ph|What should we call you
+account.identity|You are
+account.identity.student|Student
+account.identity.worker|Worker
+account.identity.other|Other
+account.note|Login state is stored locally. Delete %LOCALAPPDATA%\DiskMate\session.ini to sign out.
 log.copy|Copy all
 log.open|Open log folder
 log.clear|Clear view

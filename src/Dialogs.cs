@@ -6,11 +6,12 @@ using System.Windows.Forms;
 
 namespace DiskMate
 {
-    /// <summary>无边框圆角弹窗基类：可拖动、Esc 关闭、绘制卡片背景。</summary>
+    /// <summary>无边框圆角弹窗基类：可拖动、右上角 ✕ 关闭、Esc 关闭、绘制卡片背景。</summary>
     internal class DialogShell : Form
     {
         protected Panel body;
         public int Radius = 14;
+        private DialogCloseBtn closeBtn;
 
         public DialogShell()
         {
@@ -23,6 +24,10 @@ namespace DiskMate
             KeyPreview = true;
             AutoScaleMode = AutoScaleMode.None;
             Padding = new Padding(Theme.P(0));
+
+            closeBtn = new DialogCloseBtn();
+            closeBtn.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            Controls.Add(closeBtn);
         }
 
         protected override CreateParams CreateParams
@@ -45,6 +50,8 @@ namespace DiskMate
         {
             base.OnResize(e);
             ApplyRegion();
+            if (closeBtn != null && Width > 0)
+                closeBtn.Location = new Point(Width - closeBtn.Width - Theme.P(6), Theme.P(7));
         }
 
         private void ApplyRegion()
@@ -156,7 +163,11 @@ namespace DiskMate
             using (var d = new ConfirmDialog())
             {
                 d.BuildClean(items, total, mid, high);
-                return d.ShowDialog(owner) == DialogResult.OK;
+                Form f = owner as Form;
+                DialogResult r = f != null
+                    ? ModalMask.Wrap(f, delegate { return d.ShowDialog(f); })
+                    : d.ShowDialog(owner);
+                return r == DialogResult.OK;
             }
         }
 
@@ -256,6 +267,73 @@ namespace DiskMate
             ok.Location = new Point(w - Theme.P(28) - Theme.P(132), h - Theme.P(64));
             ok.Click += delegate { DialogResult = DialogResult.OK; Close(); };
             Controls.Add(ok);
+        }
+    }
+
+    // ============================================================ 弹窗右上角关闭按钮
+    internal class DialogCloseBtn : Control
+    {
+        private bool hover;
+
+        public DialogCloseBtn()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            Size = new Size(Theme.P(28), Theme.P(28));
+            Cursor = Cursors.Hand;
+            BackColor = Theme.Surface;
+        }
+
+        protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var b = new SolidBrush(hover ? Theme.SurfaceAlt : Theme.Surface))
+                g.FillRectangle(b, ClientRectangle);
+            Color c = hover ? Theme.Text : Theme.TextSub;
+            int m = Theme.P(9);
+            using (var pen = new Pen(c, 1.5f))
+            {
+                g.DrawLine(pen, m, m, Width - m, Height - m);
+                g.DrawLine(pen, Width - m, m, m, Height - m);
+            }
+        }
+    }
+
+    // ============================================================ 模态弹窗遮罩
+    internal static class ModalMask
+    {
+        /// <summary>
+        /// 用半透明黑遮罩盖住主窗口，再在遮罩之上弹模态对话框；对话框关闭后遮罩自动消失。
+        /// 注意：Form.Show(owner) 在 Enabled=false 时会抛
+        /// “未启用的窗体不能显示为模式对话框”（框架把 ShowDialog 的检查误复制进了 Show），
+        /// 所以必须先 Show 再禁用。
+        /// </summary>
+        public static DialogResult Wrap(Form owner, Func<DialogResult> show)
+        {
+            if (owner == null || !owner.Visible) return show();
+
+            Form mask = new Form();
+            mask.FormBorderStyle = FormBorderStyle.None;
+            mask.ShowInTaskbar = false;
+            mask.StartPosition = FormStartPosition.Manual;
+            mask.BackColor = Color.Black;
+            mask.Opacity = 0.42;
+            mask.Bounds = owner.Bounds;
+            try
+            {
+                mask.Show(owner);
+                mask.Enabled = false;   // 必须放在 Show 之后，拦截鼠标点击
+                return show();
+            }
+            finally
+            {
+                mask.Close();
+                mask.Dispose();
+            }
         }
     }
 }

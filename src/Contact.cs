@@ -71,7 +71,13 @@ namespace DiskMate
         public static void Show(IWin32Window owner)
         {
             using (var d = new ContactDialog())
-                d.ShowDialog(owner);
+            {
+                Form f = owner as Form;
+                if (f != null)
+                    ModalMask.Wrap(f, delegate { return d.ShowDialog(f); });
+                else
+                    d.ShowDialog(owner);
+            }
         }
 
         /// <summary>自检用：把弹窗渲染成 PNG。</summary>

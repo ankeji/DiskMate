@@ -17,13 +17,13 @@ namespace DiskMate
     {
         // ---- shell
         private Panel sidebar, mainHost, topbar, content, bannerHost;
-        private NavItem navClean, navBig, navLog;
+        private NavItem navClean, navBig, navLog, navWechat, navContact;
         private Label lblPageTitle, lblPageSub, lblLastScan, lblAdmin, lblVersion;
         private FlowLayoutPanel rightBox;
         private FlatButton btnLang;
         private FlatButton btnUpdate;
         private FlatButton btnDonate;
-        private FlatButton btnContact;
+        private FlatButton btnAccount;
         private UpdateInfo pendingUpdate;
         private bool checkingUpdate;
         private DiskMeter dmC, dmD;
@@ -32,7 +32,7 @@ namespace DiskMate
         private Banner banner;
 
         // ---- pages
-        private Panel pageClean, pageBig, pageLog;
+        private Panel pageClean, pageBig, pageLog, pageWechat;
 
         // ---- clean page: welcome
         private Panel pageWelcome;
@@ -70,6 +70,7 @@ namespace DiskMate
         private ListView lvBig;
         private FlatButton btnBigScan, btnBigReveal;
         private Label lblBigHint;
+        private Label lblBigEmpty;
         private ComboBox cmbThreshold;
 
         // ---- log
@@ -115,11 +116,13 @@ namespace DiskMate
             BuildCleanPage();
             BuildBigPage();
             BuildLogPage();
+            BuildWeChatPage();
             RefreshDrives();
 
             ShowPage(0);
             ShowPhase(-1);
             StartSilentUpdateCheck();
+            BootstrapAccount();
             Log("程序启动  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             Log("管理员权限：" + (IsAdmin() ? "是" : "否"));
         }
@@ -128,7 +131,8 @@ namespace DiskMate
         {
             if (e.KeyCode == Keys.F5)
             {
-                if (activePage == 1) StartBigScan(); else BeginScan();
+                if (activePage == 1) StartBigScan();
+                else if (activePage == 0) BeginScan();
                 e.Handled = true;
             }
             else if (e.Control && e.KeyCode == Keys.F)
@@ -166,6 +170,15 @@ namespace DiskMate
             navBig.Click += delegate { ShowPage(1); };
             navLog.Click += delegate { ShowPage(2); };
 
+            // 微信专清：和清理体检/大文件/日志一样占一整行，点进独立的清理页面
+            navWechat = MakeNav(I18n.T("wechat.btn"), "broom");
+            navWechat.Tag = "wechat.btn";
+            navWechat.Click += delegate { ShowPage(3); };
+
+            // 问题反馈：和清理体检/大文件/日志一样占一整行，点击弹出二维码
+            navContact = MakeNav(I18n.T("contact.btn"), "chat");
+            navContact.Click += delegate { ContactDialog.Show(this); };
+
             btnLang = new FlatButton();
             btnLang.Kind = BtnKind.Secondary;
             btnLang.Size = new Size(Theme.P(184), Theme.P(34));
@@ -194,13 +207,13 @@ namespace DiskMate
             btnDonate.Click += delegate { DonateDialog.Show(this); };
             sidebar.Controls.Add(btnDonate);
 
-            btnContact = new FlatButton();
-            btnContact.Kind = BtnKind.Ghost;
-            btnContact.Size = new Size(Theme.P(184), Theme.P(26));
-            btnContact.Font = Theme.Small;
-            btnContact.Text = I18n.T("contact.btn");
-            btnContact.Click += delegate { ContactDialog.Show(this); };
-            sidebar.Controls.Add(btnContact);
+            btnAccount = new FlatButton();
+            btnAccount.Kind = BtnKind.Ghost;
+            btnAccount.Size = new Size(Theme.P(184), Theme.P(26));
+            btnAccount.Font = Theme.Small;
+            btnAccount.Text = "登录 / 注册";
+            btnAccount.Click += delegate { OpenAccount(); };
+            sidebar.Controls.Add(btnAccount);
 
             dmC = new DiskMeter(); dmC.Letter = 'C';
             dmD = new DiskMeter(); dmD.Letter = 'D';
@@ -304,6 +317,7 @@ namespace DiskMate
             pageClean = new Panel(); pageClean.Dock = DockStyle.Fill; pageClean.BackColor = Theme.Bg; pageClean.Visible = false; content.Controls.Add(pageClean);
             pageBig = new Panel(); pageBig.Dock = DockStyle.Fill; pageBig.BackColor = Theme.Bg; pageBig.Visible = false; content.Controls.Add(pageBig);
             pageLog = new Panel(); pageLog.Dock = DockStyle.Fill; pageLog.BackColor = Theme.Bg; pageLog.Visible = false; content.Controls.Add(pageLog);
+            pageWechat = new Panel(); pageWechat.Dock = DockStyle.Fill; pageWechat.BackColor = Theme.Bg; pageWechat.Visible = false; content.Controls.Add(pageWechat);
 
             LayoutSidebar();
             mainHost.Resize += delegate { LayoutMain(); };
@@ -350,11 +364,12 @@ namespace DiskMate
 
         private void LayoutSidebar()
         {
-            if (sidebar == null || navClean == null || navBig == null || navLog == null) return;
+            if (sidebar == null || navClean == null || navBig == null || navLog == null || navWechat == null || navContact == null) return;
             if (dmC == null || dmD == null || lblAdmin == null || lblVersion == null) return;
 
             int y = Theme.P(98);
-            NavItem[] navs = { navClean, navBig, navLog };
+            // 显示顺序：清理体检 → 微信专清 → 大文件 → 日志 → 问题反馈（页面索引不变）
+            NavItem[] navs = { navClean, navWechat, navBig, navLog, navContact };
             foreach (NavItem n in navs)
             {
                 n.Location = new Point(Theme.P(0), y);
@@ -377,15 +392,9 @@ namespace DiskMate
                 btnDonate.Width = sidebar.Width - Theme.P(36);
                 btnDonate.Location = new Point(Theme.P(18), y + Theme.P(78));
             }
-            if (btnContact != null)
-            {
-                btnContact.Width = sidebar.Width - Theme.P(36);
-                btnContact.Location = new Point(Theme.P(18), y + Theme.P(108));
-            }
 
-            // 底部区：版本 → 权限 → D 盘 → C 盘，从下往上依次堆叠，间距与控件高度都随 DPI 缩放
+            // 底部区：版本 → 权限 → D 盘 → C 盘 → 登录注册按钮，从下往上依次堆叠，间距与控件高度都随 DPI 缩放
             int meterH = DiskMeter.PreferredHeight;
-            int pad = Theme.P(12);
 
             int bottom = sidebar.Height - Theme.P(10);
             lblVersion.Location = new Point(Theme.P(22), bottom - lblVersion.Height);
@@ -399,7 +408,8 @@ namespace DiskMate
             int dmCY = dmDY - Theme.P(4) - meterH;
 
             // 垂直空间不足时不显示磁盘条（例如小屏 + 200% 缩放），避免和上方按钮叠在一起
-            int limit = (btnContact != null ? btnContact.Bottom : (btnDonate != null ? btnDonate.Bottom : Theme.P(300))) + Theme.P(10);
+            int accSpace = btnAccount != null ? btnAccount.Height + Theme.P(12) : 0;
+            int limit = (btnDonate != null ? btnDonate.Bottom : Theme.P(346)) + Theme.P(10) + accSpace;
             bool roomForMeters = dmCY >= limit;
             dmC.Visible = roomForMeters;
             dmD.Visible = roomForMeters;
@@ -411,6 +421,16 @@ namespace DiskMate
             dmC.Location = new Point(Theme.P(16), dmCY);
             dmC.Width = sidebar.Width - Theme.P(32);
             dmC.Height = meterH;
+
+            // 登录注册按钮放在盘容量展示（C 盘条）的上面
+            if (btnAccount != null)
+            {
+                btnAccount.Width = sidebar.Width - Theme.P(36);
+                int accTop = (roomForMeters ? dmCY : meterTop) - Theme.P(12) - btnAccount.Height;
+                int minTop = (btnDonate != null ? btnDonate.Bottom : Theme.P(346)) + Theme.P(4);
+                if (accTop < minTop) accTop = minTop;
+                btnAccount.Location = new Point(Theme.P(18), accTop);
+            }
             sidebar.Invalidate();
         }
 
@@ -432,17 +452,81 @@ namespace DiskMate
                 g.DrawLine(pen, Theme.P(18), meterTop, sidebar.Width - Theme.P(18), meterTop);
         }
 
+        // ============================================================ 账号
+        private void BootstrapAccount()
+        {
+            Api.LoadConfig();
+            Session.Load();
+            UpdateAccountButton();
+            Log("账号服务：" + Api.BaseUrl + (Session.IsLoggedIn ? "（已登录 " + Session.Email + "）" : "（未登录）"));
+            if (!Session.IsLoggedIn) return;
+
+            Task.Factory.StartNew(delegate
+            {
+                ApiResult r = Session.AuthedGet("/api/auth/me");
+                if (!r.Ok) Session.Clear();
+                Ui(delegate { UpdateAccountButton(); });
+            });
+        }
+
+        private void OpenAccount()
+        {
+            AccountDialog.Show(this, delegate { UpdateAccountButton(); });
+        }
+
+        private void UpdateAccountButton()
+        {
+            if (btnAccount == null || btnAccount.IsDisposed) return;
+            string text = Session.IsLoggedIn ? Session.Email : "登录 / 注册";
+            if (text.Length > 26) text = text.Substring(0, 25) + "…";
+            if (btnAccount.Text != text)
+            {
+                btnAccount.Text = text;
+                btnAccount.Invalidate();
+            }
+        }
+
+        /// <summary>自检用：切到大文件页并填几行假数据（不真扫描）</summary>
+        public void TestShowBig()
+        {
+            ShowPage(1);
+            if (lvBig == null) return;
+            string[] paths =
+            {
+                @"C:\Windows\System32\DriverStore\FileRepository\nvhm.inf_amd64\display.driver\nvldumdx.dll",
+                @"D:\Users\hjs2125\AppData\Local\Temp\a-very-long-temporary-file-name-used-for-layout-checking.vhdx",
+                @"C:\Program Files\Some App\resources\big-asset-bundle.pak",
+                @"C:\hiberfil.sys"
+            };
+            long[] sizes = { 3L << 30, 1380000000, 640000000, 210000000 };
+            lvBig.BeginUpdate();
+            try
+            {
+                lvBig.Items.Clear();
+                for (int i = 0; i < paths.Length; i++)
+                    lvBig.Items.Add(new ListViewItem(new[] { Theme.Fmt(sizes[i]), paths[i] }));
+            }
+            finally { lvBig.EndUpdate(); }
+            if (lblBigEmpty != null) lblBigEmpty.Visible = lvBig.Items.Count == 0;
+            if (lvBig.Items.Count > 0) { lvBig.Items[0].Selected = true; lvBig.Items[0].Focused = true; }
+            UpdateBigButtons();
+            if (lblBigHint != null) lblBigHint.Text = I18n.F("big.done", 123456, lvBig.Items.Count, Theme.Fmt(200L << 20));
+            Application.DoEvents();
+        }
+
         private void ShowPage(int idx)
         {
             activePage = idx;
             pageClean.Visible = idx == 0;
             pageBig.Visible = idx == 1;
             pageLog.Visible = idx == 2;
+            pageWechat.Visible = idx == 3;
 
             navClean.Active = idx == 0;
             navBig.Active = idx == 1;
             navLog.Active = idx == 2;
-            navClean.Invalidate(); navBig.Invalidate(); navLog.Invalidate();
+            navWechat.Active = idx == 3;
+            navClean.Invalidate(); navBig.Invalidate(); navLog.Invalidate(); navWechat.Invalidate();
 
             string titleKey, subKey;
             switch (idx)
@@ -454,6 +538,10 @@ namespace DiskMate
                 case 1:
                     titleKey = "nav.big";
                     subKey = "page.big.sub";
+                    break;
+                case 3:
+                    titleKey = "wechat.btn";
+                    subKey = "page.wechat.sub";
                     break;
                 default:
                     titleKey = "nav.log";
@@ -543,10 +631,11 @@ namespace DiskMate
             if (navClean != null) navClean.Invalidate();
             if (navBig != null) navBig.Invalidate();
             if (navLog != null) navLog.Invalidate();
+            if (navContact != null) { navContact.Text = I18n.T("contact.btn"); navContact.Invalidate(); }
+            if (navWechat != null) { navWechat.Text = I18n.T("wechat.btn"); navWechat.Invalidate(); }
             if (btnLang != null) btnLang.Text = LangText();
             UpdateButtonText();
             if (btnDonate != null) btnDonate.Text = I18n.T("donate.btn");
-            if (btnContact != null) btnContact.Text = I18n.T("contact.btn");
             if (lblAdmin != null) lblAdmin.Text = IsAdmin() ? I18n.T("admin.yes") : I18n.T("admin.no");
             if (btnRescan != null) btnRescan.Text = I18n.T("btn.rescan");
             if (lblEmpty != null) lblEmpty.Text = all.Count == 0 ? I18n.T("empty.none") : I18n.T("empty.filter");
@@ -554,6 +643,8 @@ namespace DiskMate
             if (btnSelectNone != null) btnSelectNone.Text = I18n.T("btn.selectNone");
             if (btnBigScan != null) btnBigScan.Text = I18n.T("big.btn");
             if (lblBigHint != null && lvBig != null && lvBig.Items.Count == 0) lblBigHint.Text = I18n.T("big.idle");
+            if (cmbThreshold != null) FillThresholds();
+            if (lblBigEmpty != null && lblBigEmpty.Visible) lblBigEmpty.Text = I18n.T("big.idle");
             UpdateAdminChip();
             UpdateLastScanText();
 
@@ -718,10 +809,22 @@ namespace DiskMate
             }
         }
 
+        // ============================================================ 登录门禁
+        /// <summary>清理体检 / 大文件扫描 / 微信专清都要求登录；未登录直接弹登录框，登录成功即继续。</summary>
+        private bool RequireLogin()
+        {
+            if (Session.IsLoggedIn) return true;
+            AccountDialog.Show(this, delegate { UpdateAccountButton(); });
+            if (Session.IsLoggedIn) return true;
+            ShowBanner(BannerKind.Info, I18n.T("login.required"), 6);
+            return false;
+        }
+
         // ============================================================ scanning
         private void BeginScan()
         {
             if (busy) return;
+            if (!RequireLogin()) return;
             ShowPage(0);
             ShowPhase(0);
             busy = true;
@@ -795,6 +898,7 @@ namespace DiskMate
                     Log(string.Format("扫描完成：{0} 项，合计 {1}", all.Count, Theme.Fmt(TotalSize())));
                     ShowBanner(BannerKind.Success,
                         I18n.F("scan.done", all.Count, Theme.Fmt(TotalSize())), 9);
+                    Session.PingActivity("scan");   // 用了一次扫描，记一次活跃
                 });
             }, TaskCreationOptions.LongRunning);
         }
@@ -999,6 +1103,8 @@ namespace DiskMate
                     Log(string.Format("清理完成：释放 {0}，可用空间增加 {1}", Theme.Fmt(freed), Theme.Fmt(delta)));
                     ShowBanner(BannerKind.Success,
                         I18n.F("toast.cleanDone", Theme.Fmt(freed), Theme.Fmt(delta)), 12);
+                    Session.PingActivity("clean");   // 用了一次清理，记一次活跃
+                    if (freed > 0) DonateDialog.ShowDone(this);   // 清理完成后引导捐赠，点“我已捐赠”关闭
                 });
             }, TaskCreationOptions.LongRunning);
         }
@@ -1349,7 +1455,7 @@ namespace DiskMate
             I18n.Set(code);
             var sb = new StringBuilder();
             sb.AppendLine("lang=" + I18n.Lang + "  (" + I18n.NativeName(I18n.Lang) + ")");
-            sb.AppendLine("  nav=" + navClean.Text + " / " + navBig.Text + " / " + navLog.Text);
+            sb.AppendLine("  nav=" + navClean.Text + " / " + navBig.Text + " / " + navLog.Text + " / " + navWechat.Text + " / " + navContact.Text);
             sb.AppendLine("  page=" + lblPageTitle.Text + " — " + lblPageSub.Text);
             sb.AppendLine("  bar=" + btnSelectLow.Text + " | " + btnSelectNone.Text + " | " + btnCleanNow.Text + " | " + btnRescan.Text);
             sb.AppendLine("  sel=" + lblSelected.Text + " | ph=" + search.Placeholder + " | empty=" + lblEmpty.Text);
@@ -1416,6 +1522,10 @@ namespace DiskMate
             }
             sb.AppendLine("detailCard=" + detailCard.Bounds + " parentVisible=" + detailCard.Parent.Visible);
             sb.AppendLine("listHost=" + listHost.Bounds + " lvItems=" + lvItems.Bounds + " rows=" + lvItems.Items.Count);
+            sb.AppendLine("sidebar: accounts=" + (btnAccount == null ? "无" : btnAccount.Bounds.ToString())
+                + " version=" + (lblVersion == null ? "无" : lblVersion.Bounds.ToString())
+                + " admin=" + (lblAdmin == null ? "无" : lblAdmin.Bounds.ToString())
+                + " meters=" + (dmC == null ? "无" : dmC.Bounds.ToString()) + "/" + (dmD == null ? "无" : dmD.Bounds.ToString()));
             return sb.ToString();
         }
 
@@ -1477,8 +1587,8 @@ namespace DiskMate
                 Rectangle r = c.Bounds;
                 Rectangle pc = c.Parent.ClientRectangle;
                 bool allowOverflow = c.Parent is ScrollableControl && ((ScrollableControl)c.Parent).AutoScroll;
-                // 扁平滚动条方案：列表/滚动面板故意比宿主宽一个滚动条宽度，让原生条被裁掉
-                bool scrollClip = (c is ItemList || c is ScrollPanel)
+                // 扁平滚动条方案：内容控件故意比宿主宽一个滚动条宽度，让原生条被裁掉
+                bool scrollClip = r.Width > pc.Width
                     && r.Width - pc.Width <= SystemInformation.VerticalScrollBarWidth
                     && r.Height <= pc.Height + Theme.P(2)
                     && r.Left >= -Theme.P(2) && r.Top >= -Theme.P(2);
@@ -1490,6 +1600,7 @@ namespace DiskMate
                 string txt = c.Text;
                 if (string.IsNullOrEmpty(txt)) continue;
                 if (c is TextBox || c is ListView || c is TreeView || c is ComboBox) continue;
+                if (c is Label && ((Label)c).AutoEllipsis) continue;   // 设计师明确允许省略
                 if (c.Height >= c.Font.Height * 2) continue;   // 允许多行换行的标签
                 if (c.AutoSize) continue;                       // 自适应尺寸不会被裁
                 Size need = TextRenderer.MeasureText(txt, c.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);

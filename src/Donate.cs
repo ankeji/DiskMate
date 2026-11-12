@@ -9,8 +9,9 @@ using System.Windows.Forms;
 namespace DiskMate
 {
     /// <summary>
-    /// 赞助弹窗：中文界面显示支付宝 / 微信收款码（内嵌资源），其他语言显示 Ko-fi。
+    /// 捐赠弹窗：中文界面显示支付宝 / 微信收款码（内嵌资源），其他语言显示 Ko-fi。
     /// 收款码点一下会用系统看图工具打开原图，方便放大扫码。
+    /// done 模式（清理完成后弹出）右下角按钮为“我已捐赠”。
     /// </summary>
     internal class DonateDialog : DialogShell
     {
@@ -21,7 +22,7 @@ namespace DiskMate
 
         private Image imgAlipay, imgWeixin;
 
-        private DonateDialog()
+        private DonateDialog(bool done)
         {
             bool zh = I18n.Lang.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
             int w = Theme.P(560);
@@ -75,10 +76,10 @@ namespace DiskMate
             }
 
             var btnClose = new FlatButton();
-            btnClose.Kind = BtnKind.Secondary;
-            btnClose.Text = I18n.T("donate.close");
-            btnClose.Size = new Size(Theme.P(96), Theme.P(38));
-            btnClose.Location = new Point(w - Theme.P(30) - Theme.P(96), h - Theme.P(62));
+            btnClose.Kind = done ? BtnKind.Primary : BtnKind.Secondary;
+            btnClose.Text = done ? I18n.T("donate.done") : I18n.T("donate.close");
+            btnClose.Size = new Size(done ? Theme.P(132) : Theme.P(96), Theme.P(38));
+            btnClose.Location = new Point(w - Theme.P(30) - btnClose.Width, h - Theme.P(62));
             btnClose.Click += delegate { Close(); };
             Controls.Add(btnClose);
 
@@ -125,8 +126,27 @@ namespace DiskMate
 
         public static void Show(IWin32Window owner)
         {
-            using (var d = new DonateDialog())
-                d.ShowDialog(owner);
+            using (var d = new DonateDialog(false))
+            {
+                Form f = owner as Form;
+                if (f != null)
+                    ModalMask.Wrap(f, delegate { return d.ShowDialog(f); });
+                else
+                    d.ShowDialog(owner);
+            }
+        }
+
+        /// <summary>清理完成后的引导弹窗：关闭按钮为“我已捐赠”。</summary>
+        public static void ShowDone(IWin32Window owner)
+        {
+            using (var d = new DonateDialog(true))
+            {
+                Form f = owner as Form;
+                if (f != null)
+                    ModalMask.Wrap(f, delegate { return d.ShowDialog(f); });
+                else
+                    d.ShowDialog(owner);
+            }
         }
 
         /// <summary>自检用：把弹窗渲染成 PNG。</summary>
@@ -134,7 +154,7 @@ namespace DiskMate
         {
             try
             {
-                using (var d = new DonateDialog())
+                using (var d = new DonateDialog(false))
                 {
                     d.Show();
                     Application.DoEvents();

@@ -30,6 +30,28 @@ namespace DiskMate
         }
     }
 
+    // 微信专清页顶部的圆角图标块
+    internal class WipBadge : Control
+    {
+        public WipBadge()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Theme.Surface;
+            Size = new Size(Theme.P(76), Theme.P(76));
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(BackColor);
+            Theme.FillRound(g, new Rectangle(0, 0, Width, Height), Theme.P(20), Theme.PrimarySoft);
+            int pad = Theme.P(21);
+            IconPainter.Draw(g, new RectangleF(pad, pad, Width - pad * 2, Height - pad * 2), "broom", Theme.Primary);
+        }
+    }
+
     public partial class MainForm
     {
         // ============================================================ clean page
@@ -595,14 +617,15 @@ namespace DiskMate
             cmbThreshold.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbThreshold.FlatStyle = FlatStyle.Flat;
             cmbThreshold.Font = Theme.Base;
-            cmbThreshold.Items.AddRange(new object[] { "100 MB 以上", "200 MB 以上", "500 MB 以上", "1 GB 以上" });
-            cmbThreshold.SelectedIndex = 1;
+            cmbThreshold.ItemHeight = Theme.P(22);
             cmbThreshold.Size = new Size(Theme.P(140), Theme.P(30));
             cmbThreshold.Location = new Point(Theme.P(152), Theme.P(14));
+            FillThresholds();   // 内部会填选项并选中默认项（200 MB）
             bar.Controls.Add(cmbThreshold);
 
             lblBigHint = new Label();
             lblBigHint.AutoSize = false;
+            lblBigHint.AutoEllipsis = true;   // 窗口变窄时不硬挤，末尾省略
             lblBigHint.Location = new Point(Theme.P(306), Theme.P(14));
             lblBigHint.Size = new Size(Theme.P(520), Theme.P(30));
             lblBigHint.ForeColor = Theme.TextSub;
@@ -613,6 +636,7 @@ namespace DiskMate
             btnBigReveal.Kind = BtnKind.Secondary;
             Txt(btnBigReveal, "big.open");
             btnBigReveal.Icon = "folder";
+            btnBigReveal.Enabled = false;
             btnBigReveal.Size = new Size(Theme.P(120), Theme.P(36));
             btnBigReveal.Location = new Point(Theme.P(840), Theme.P(11));
             btnBigReveal.Click += delegate { RevealBigFile(); };
@@ -635,23 +659,44 @@ namespace DiskMate
             lvBig.BorderStyle = BorderStyle.None;
             lvBig.Font = Theme.Base;
             lvBig.BackColor = Theme.Surface;
+            var bigRows = new ImageList();
+            bigRows.ImageSize = new Size(1, Theme.P(28));   // 统一行高，别再用系统默认的紧凑行
+            bigRows.ColorDepth = ColorDepth.Depth32Bit;
+            lvBig.SmallImageList = bigRows;
             lvBig.Columns.Add(I18n.T("big.colsize"), Theme.P(110), HorizontalAlignment.Right);
-            lvBig.Columns.Add(I18n.T("big.colpath"), Theme.P(700));
+            lvBig.Columns.Add(I18n.T("big.colpath"), Theme.P(560));
             lvBig.DoubleClick += delegate { RevealBigFile(); };
+            lvBig.SelectedIndexChanged += delegate { UpdateBigButtons(); };
+
             var bigHost = new Panel();
             bigHost.Dock = DockStyle.Fill;
             bigHost.BackColor = Theme.Surface;
             card.Controls.Add(bigHost);
             lvBig.Dock = DockStyle.None;
             bigHost.Controls.Add(lvBig);
+
+            lblBigEmpty = new Label();
+            lblBigEmpty.AutoSize = false;
+            lblBigEmpty.TextAlign = ContentAlignment.MiddleCenter;
+            lblBigEmpty.ForeColor = Theme.TextFaint;
+            lblBigEmpty.BackColor = Theme.Surface;
+            Txt(lblBigEmpty, "big.idle");
+            bigHost.Controls.Add(lblBigEmpty);
+            lblBigEmpty.BringToFront();
+
             int sbw = SystemInformation.VerticalScrollBarWidth;
             bigHost.Resize += delegate
             {
                 lvBig.Bounds = new Rectangle(0, 0, bigHost.ClientSize.Width + sbw, bigHost.ClientSize.Height);
+                lblBigEmpty.Bounds = new Rectangle(Theme.P(16), bigHost.ClientSize.Height / 2 - Theme.P(28),
+                    Math.Max(Theme.P(80), bigHost.ClientSize.Width - Theme.P(32)), Theme.P(56));
             };
             lvBig.Bounds = new Rectangle(0, 0, bigHost.Width + sbw, bigHost.Height);
+            lblBigEmpty.Bounds = new Rectangle(Theme.P(16), Theme.P(120), Math.Max(Theme.P(80), bigHost.Width - Theme.P(32)), Theme.P(56));
             new FlatScrollbar(bigHost, new ListViewSource(lvBig));
-            ListViewFit.Attach(lvBig, 1, 20);   // 路径列吸收剩余宽度            pageBig.Resize += delegate
+            ListViewFit.Attach(lvBig, 1, 20);   // 路径列吸收剩余宽度
+
+            pageBig.Resize += delegate
             {
                 bar.SetBounds(Theme.P(0), Theme.P(0), pageBig.Width, Theme.P(62));
                 card.SetBounds(Theme.P(0), Theme.P(62), pageBig.Width, Math.Max(Theme.P(120), pageBig.Height - Theme.P(62)));
@@ -661,12 +706,14 @@ namespace DiskMate
         private void StartBigScan()
         {
             if (busy) return;
+            if (!RequireLogin()) return;
             busy = true;
             scanCancel = false;
             btnBigScan.Enabled = false;
             btnBigScan.Text = I18n.T("big.scanning");
             btnBigScan.Invalidate();
             lblBigHint.Text = I18n.T("big.scanning");
+            if (lblBigEmpty != null) lblBigEmpty.Visible = false;
             long threshold = BigThresholds[Math.Max(0, cmbThreshold.SelectedIndex)];
 
             Task.Factory.StartNew(delegate
@@ -736,12 +783,51 @@ namespace DiskMate
                         ? I18n.T("big.cancel")
                         : I18n.F("big.done", scanned, result.Count, Theme.Fmt(threshold));
                     Log(string.Format("大文件扫描：{0} 个命中", result.Count));
+                    if (!scanCancel) Session.PingActivity("bigscan");   // 用了一次大文件扫描，记一次活跃
                     busy = false;
                     btnBigScan.Enabled = true;
                     Txt(btnBigScan, "big.btn");
                     btnBigScan.Invalidate();
+                    if (lblBigEmpty != null)
+                    {
+                        bool empty = lvBig.Items.Count == 0;
+                        lblBigEmpty.Visible = empty;
+                        if (empty) lblBigEmpty.Text = I18n.F("big.none", Theme.Fmt(threshold));
+                    }
+                    if (lvBig.Items.Count > 0) { lvBig.Items[0].Selected = true; lvBig.Items[0].Focused = true; }
+                    UpdateBigButtons();
                 });
             }, TaskCreationOptions.LongRunning);
+        }
+
+        /// <summary>阈值下拉：跟随语言切换重建，保留选中项</summary>
+        private void FillThresholds()
+        {
+            if (cmbThreshold == null) return;
+            int keep = cmbThreshold.SelectedIndex;
+            cmbThreshold.BeginUpdate();
+            try
+            {
+                cmbThreshold.Items.Clear();
+                cmbThreshold.Items.Add(I18n.T("big.th100"));
+                cmbThreshold.Items.Add(I18n.T("big.th200"));
+                cmbThreshold.Items.Add(I18n.T("big.th500"));
+                cmbThreshold.Items.Add(I18n.T("big.th1g"));
+            }
+            finally { cmbThreshold.EndUpdate(); }
+            cmbThreshold.SelectedIndex = keep >= 0 && keep < cmbThreshold.Items.Count ? keep : 1;
+        }
+
+        /// <summary>没选中行时「打开位置」不可点</summary>
+        private void UpdateBigButtons()
+        {
+            if (btnBigReveal == null) return;
+            bool has = lvBig != null && lvBig.SelectedItems.Count > 0;
+            if (btnBigReveal.Enabled != has)
+            {
+                btnBigReveal.Enabled = has;
+                btnBigReveal.Invalidate();
+            }
         }
 
         private void RevealBigFile()
@@ -812,6 +898,70 @@ namespace DiskMate
                 bar.SetBounds(Theme.P(0), Theme.P(0), pageLog.Width, Theme.P(52));
                 card.SetBounds(Theme.P(0), Theme.P(52), pageLog.Width, Math.Max(Theme.P(120), pageLog.Height - Theme.P(52)));
             };
+        }
+
+        // ============================================================ wechat page
+        /// <summary>微信专清独立页面：功能未上线，先放“开发中…”占位 + 催更入口（复用问题反馈二维码弹窗）。</summary>
+        private void BuildWeChatPage()
+        {
+            pageWechat.BackColor = Theme.Bg;
+
+            var card = new CardPanel();
+            card.FillColor = Theme.Surface;
+            card.BorderColor = Theme.Border;
+            pageWechat.Controls.Add(card);
+
+            var badge = new WipBadge();
+            card.Controls.Add(badge);
+
+            var lblDev = new Label();
+            lblDev.AutoSize = false;
+            lblDev.TextAlign = ContentAlignment.MiddleCenter;
+            lblDev.Font = Theme.F(19f, FontStyle.Bold);
+            lblDev.ForeColor = Theme.Text;
+            lblDev.Text = I18n.T("wechat.wip");
+            card.Controls.Add(lblDev);
+
+            var lblDesc = new Label();
+            lblDesc.AutoSize = false;
+            lblDesc.TextAlign = ContentAlignment.MiddleCenter;
+            lblDesc.Font = Theme.Base;
+            lblDesc.ForeColor = Theme.TextSub;
+            lblDesc.Text = I18n.T("wechat.wip.sub");
+            card.Controls.Add(lblDesc);
+
+            var btnNudge = new FlatButton();
+            btnNudge.Kind = BtnKind.Primary;
+            btnNudge.Font = Theme.Base;
+            btnNudge.Text = I18n.T("wechat.nudge");
+            btnNudge.Click += delegate { ContactDialog.Show(this); };
+            card.Controls.Add(btnNudge);
+
+            Action layout = delegate
+            {
+                int w = pageWechat.Width, h = pageWechat.Height;
+                card.SetBounds(Theme.P(0), Theme.P(0), w, h);
+                int cw = card.Width;
+                int bh = badge.Height;
+                int total = bh + Theme.P(18) + Theme.P(34) + Theme.P(8) + Theme.P(44) + Theme.P(20) + Theme.P(40);
+                int top = Math.Max(Theme.P(24), (card.Height - total) / 2);
+
+                badge.Location = new Point((cw - badge.Width) / 2, top);
+                lblDev.SetBounds(Theme.P(0), badge.Bottom + Theme.P(18), cw, Theme.P(34));
+                lblDesc.SetBounds(Theme.P(0), lblDev.Bottom + Theme.P(8), cw, Theme.P(44));
+                btnNudge.Size = new Size(Theme.P(132), Theme.P(40));
+                btnNudge.Location = new Point((cw - btnNudge.Width) / 2, lblDesc.Bottom + Theme.P(20));
+            };
+
+            pageWechat.Resize += delegate { layout(); };
+            layout();
+        }
+
+        /// <summary>自检用：切到微信专清页（占位页）</summary>
+        public void TestShowWeChat()
+        {
+            ShowPage(3);
+            Application.DoEvents();
         }
 
         // ============================================================ scan steps
