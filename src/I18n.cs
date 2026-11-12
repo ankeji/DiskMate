@@ -56,6 +56,67 @@ namespace DiskMate
             AddDonate();
             AddWechat();
             AddDrive();
+            AddAnnounce();
+        }
+
+        /// <summary>向已有语言表里追加键（Add 是整表覆盖，这里不能复用）</summary>
+        private static void MergeAdd(string code, string blob)
+        {
+            Dictionary<string, string> d;
+            if (!data.TryGetValue(code, out d))
+            {
+                d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                data[code] = d;
+            }
+            foreach (string raw in blob.Replace("\r", "").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0 || line[0] == '#') continue;
+                int i = line.IndexOf('|');
+                if (i <= 0) continue;
+                d[line.Substring(0, i).Trim()] = line.Substring(i + 1).Trim();
+            }
+        }
+
+        /// <summary>公告弹窗（其它语言回落到英文）</summary>
+        private static void AddAnnounce()
+        {
+            MergeAdd("zh-CN",
+                "announce.gotit|我已知晓\n" +
+                "announce.level.info|公告\n" +
+                "announce.level.warn|提醒\n" +
+                "announce.level.important|重要\n" +
+                "big.delete|删除选中\n" +
+                "big.delNone|先在列表里勾选要删除的文件\n" +
+                "big.delTitle|删除文件\n" +
+                "big.delAsk|将把 {0} 个文件（共 {1}）移到回收站，之后还能从回收站还原。确定继续？\n" +
+                "big.delOk|移到回收站\n" +
+                "big.delDone|已删除 {0} 个文件，释放 {1}\n" +
+                "big.noneAfterDel|列表已清空，可以换个盘再扫");
+            MergeAdd("zh-TW",
+                "announce.gotit|我已知曉\n" +
+                "announce.level.info|公告\n" +
+                "announce.level.warn|提醒\n" +
+                "announce.level.important|重要\n" +
+                "big.delete|刪除選取\n" +
+                "big.delNone|先在清單裡勾選要刪除的檔案\n" +
+                "big.delTitle|刪除檔案\n" +
+                "big.delAsk|將把 {0} 個檔案（共 {1}）移到資源回收筒，之後還能還原。確定繼續？\n" +
+                "big.delOk|移到回收筒\n" +
+                "big.delDone|已刪除 {0} 個檔案，釋放 {1}\n" +
+                "big.noneAfterDel|清單已清空，可以換個磁碟再掃");
+            MergeAdd("en-US",
+                "announce.gotit|Got it\n" +
+                "announce.level.info|Notice\n" +
+                "announce.level.warn|Heads-up\n" +
+                "announce.level.important|Important\n" +
+                "big.delete|Delete selected\n" +
+                "big.delNone|Tick the files you want to delete first\n" +
+                "big.delTitle|Delete files\n" +
+                "big.delAsk|{0} file(s) ({1} in total) will be moved to the Recycle Bin and can still be restored. Continue?\n" +
+                "big.delOk|Move to Recycle Bin\n" +
+                "big.delDone|Deleted {0} file(s), freed {1}\n" +
+                "big.noneAfterDel|List is empty — pick another drive to scan");
         }
 
         /// <summary>侧边栏磁盘占用条词条。</summary>
@@ -453,7 +514,7 @@ nav.clean|清理体检
 nav.big|大文件
 nav.log|日志
 page.clean.sub|先扫描、再勾选：扫描只统计文件大小，不删除任何内容
-page.big.sub|列出磁盘上的超大文件，双击可在资源管理器中定位，只展示不删除
+page.big.sub|列出磁盘上的超大文件，双击可打开所在目录；勾选后可直接删除到回收站
 page.log.sub|所有扫描与清理动作的完整记录，同时写入本地日志文件
 welcome.title|先扫描，再决定删什么
 welcome.desc|扫描会把 C 盘上可清理的缓存、临时文件和旧驱动逐项列出，并标注每一项的风险等级与删除后果。没有你的勾选，一个文件都不会删。
@@ -653,7 +714,7 @@ nav.clean|清理健檢
 nav.big|大檔案
 nav.log|日誌
 page.clean.sub|先掃描、再勾選：掃描只統計檔案大小，不刪除任何內容
-page.big.sub|列出磁碟上的超大檔案，雙擊可在檔案總管中定位，只顯示不刪除
+page.big.sub|列出磁碟上的超大檔案，雙擊可開啟所在資料夾；勾選後可直接刪除到資源回收筒
 page.log.sub|所有掃描與清理動作的完整記錄，同時寫入本機日誌檔
 welcome.title|先掃描，再決定刪什麼
 welcome.desc|掃描會把 C 槽上可清理的快取、暫存檔和舊驅動逐項列出，並標註每一項的風險等級與刪除後果。沒有你的勾選，一個檔案都不會刪。
@@ -853,7 +914,7 @@ nav.clean|Scan & Clean
 nav.big|Large Files
 nav.log|Log
 page.clean.sub|Scan first, then choose what to remove. Scanning only measures size, never deletes.
-page.big.sub|Lists the biggest files on disk. Double-click to reveal in Explorer. Display only, no deletion.
+page.big.sub|Lists the biggest files on disk. Double-click to open the folder; tick items to delete them to the Recycle Bin.
 page.log.sub|Full record of every scan and cleanup, mirrored to a local log file.
 welcome.title|Scan first, decide later
 welcome.desc|A scan lists the caches, temp files and old drivers on your C: drive one by one, with a risk level and the exact consequence of deleting each one. Nothing is removed until you tick it.

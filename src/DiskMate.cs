@@ -53,6 +53,28 @@ namespace DiskMate
         [DllImport("Shell32.dll", CharSet = CharSet.Unicode)]
         public static extern int SHEmptyRecycleBin(IntPtr hwnd, string pszRootPath, uint dwFlags);
 
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct SHFILEOPSTRUCT
+        {
+            public IntPtr hwnd;
+            public uint wFunc;
+            public string pFrom;
+            public string pTo;
+            public ushort fFlags;
+            public int fAnyOperationsAborted;
+            public IntPtr hNameMappings;
+            public string lpszProgressTitle;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
+        public const uint FO_DELETE = 0x0003;
+        public const ushort FOF_ALLOWUNDO = 0x0040;
+        public const ushort FOF_NOCONFIRMATION = 0x0010;
+        public const ushort FOF_SILENT = 0x0004;
+        public const ushort FOF_NOERRORUI = 0x0400;
+
         [DllImport("user32.dll")]
         public static extern bool SetProcessDPIAware();
 
@@ -684,14 +706,68 @@ namespace DiskMate
             return total;
         }
 
-        // 逐盘清空回收站：先走 Shell API，再对被跳过的残留（其它账户的 SID 目录、被占用的项目）直接删除
+        // 清理前落一个标记文件：如果进程在清理过程中消失（原生崩溃/BHO 崩溃），
+        // 下次启动时能看到这个标记，从而告诉用户"上次是哪一步挂的"。
+        private static string GuardFile()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DiskMate");
+            try { Directory.CreateDirectory(dir); } catch { }
+            return Path.Combine(dir, "recycle-running.flag");
+        }
+
+        public static void MarkRecycleStart()
+        {
+            try { File.WriteAllText(GuardFile(), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")); } catch { }
+        }
+
+        public static void MarkRecycleEnd()
+        {
+            try
+            {
+                string f = GuardFile();
+                if (File.Exists(f)) File.Delete(f);
+            }
+            catch { }
+        }
+
+        /// <summary>取出上次未正常结束的标记（有则说明上次清理回收站时进程异常退出）</summary>
+        public static string TakeRecycleCrashMark()
+        {
+            try
+            {
+                string f = GuardFile();
+                if (!File.Exists(f)) return null;
+                string t = File.ReadAllText(f).Trim();
+                try { File.Delete(f); } catch { }
+                return t;
+            }
+            catch { return null; }
+        }
+
+        // 逐盘清空回收站。
+        // 顺序很重要：先自己遍历删除（纯 Win32 文件操作，不加载任何 shell 扩展），
+        // 再用 SHEmptyRecycleBin 兜底清掉其它账户的残留和系统索引。
+        // 反过来做的话，shell32 会加载第三方右键菜单/网盘/杀软的 shell 扩展，
+        // 这些扩展一旦出问题会直接把整个进程带走 —— 表现为"点清理就闪退"，且无任何提示。
         public static long EmptyRecycleBins(StringBuilder log)
         {
             long before = RecycleBinSize();
+
+            foreach (string root in FixedDriveRoots())
+            {
+                string bin = Path.Combine(root, "$Recycle.Bin");
+                if (!Directory.Exists(bin)) continue;
+                string[] sids;
+                try { sids = Directory.GetDirectories(bin); } catch { continue; }
+                foreach (string sid in sids) ClearRecycleFolder(sid, log);
+            }
+
             foreach (string root in FixedDriveRoots())
             {
                 try
                 {
+                    if (log != null) log.AppendLine("    回收站 " + root + " 交给系统收尾");
                     int hr = Native.SHEmptyRecycleBin(IntPtr.Zero, root,
                         Native.SHERB_NOCONFIRMATION | Native.SHERB_NOPROGRESSUI | Native.SHERB_NOSOUND);
                     if (hr != 0 && log != null) log.AppendLine("    回收站 " + root + " Shell 返回 0x" + hr.ToString("X8"));
@@ -701,16 +777,37 @@ namespace DiskMate
                     if (log != null) log.AppendLine("    回收站 " + root + " Shell 失败：" + ex.Message);
                 }
             }
-            foreach (string root in FixedDriveRoots())
-            {
-                string bin = Path.Combine(root, "$Recycle.Bin");
-                if (!Directory.Exists(bin)) continue;
-                string[] sids;
-                try { sids = Directory.GetDirectories(bin); } catch { continue; }
-                foreach (string sid in sids) ClearRecycleFolder(sid, log);
-            }
+
             long after = RecycleBinSize();
             return Math.Max(0, before - after);
+        }
+
+        // 批量删除到回收站（误删可还原）。pFrom 用 \0 连接、末尾再补一个 \0。
+        public static int RecycleFiles(List<string> files, StringBuilder log)
+        {
+            if (files == null || files.Count == 0) return 0;
+            var sb = new StringBuilder();
+            foreach (string f in files)
+            {
+                if (string.IsNullOrEmpty(f)) continue;
+                sb.Append(f).Append('\0');
+            }
+            sb.Append('\0');
+
+            var op = new Native.SHFILEOPSTRUCT();
+            op.wFunc = Native.FO_DELETE;
+            op.pFrom = sb.ToString();
+            op.fFlags = (ushort)(Native.FOF_ALLOWUNDO | Native.FOF_NOCONFIRMATION | Native.FOF_SILENT | Native.FOF_NOERRORUI);
+            int hr = Native.SHFileOperation(ref op);
+            if (hr != 0 && log != null) log.AppendLine("    回收站删除返回 0x" + hr.ToString("X4") + "（文件被占用或无权限）");
+
+            int gone = 0;
+            foreach (string f in files)
+            {
+                try { if (!File.Exists(f)) gone++; }
+                catch { }
+            }
+            return gone;
         }
 
         private static void ClearRecycleFolder(string dir, StringBuilder log)

@@ -68,10 +68,11 @@ namespace DiskMate
 
         // ---- big files
         private ListView lvBig;
-        private FlatButton btnBigScan, btnBigReveal;
+        private FlatButton btnBigScan, btnBigReveal, btnBigDelete;
         private Label lblBigHint;
         private Label lblBigEmpty;
-        private ComboBox cmbThreshold;
+        private ComboBox cmbThreshold, cmbDrive;
+        private readonly List<DriveInfo> bigDrives = new List<DriveInfo>();
 
         // ---- log
         private RichTextBox txtLog;
@@ -122,9 +123,11 @@ namespace DiskMate
             ShowPage(0);
             ShowPhase(-1);
             StartSilentUpdateCheck();
+            StartAnnouncementCheck();
             BootstrapAccount();
             Log("程序启动  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             Log("管理员权限：" + (IsAdmin() ? "是" : "否"));
+            CheckInterruptedCleanup();
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -140,6 +143,20 @@ namespace DiskMate
                 if (activePage == 0 && phase == 1) { search.FocusInput(); e.Handled = true; }
             }
             base.OnKeyDown(e);
+        }
+
+        /// <summary>上次清理回收站时进程被异常终止的话，在日志里留一条，便于用户回传</summary>
+        private void CheckInterruptedCleanup()
+        {
+            try
+            {
+                string when = Engine.TakeRecycleCrashMark();
+                if (when == null) return;
+                Log("⚠ 上次清理回收站时程序异常退出（" + when + "）");
+                Log("  可能是安全软件/网盘的 shell 扩展把进程带走了；已改为先直接删除、再交给系统收尾");
+                Log("  如仍反复出现，请把本页日志发给开发者（日志目录：" + logDir + "）");
+            }
+            catch { }
         }
 
         private static bool IsAdmin()
@@ -173,7 +190,11 @@ namespace DiskMate
             // 微信专清：和清理体检/大文件/日志一样占一整行，点进独立的清理页面
             navWechat = MakeNav(I18n.T("wechat.btn"), "broom");
             navWechat.Tag = "wechat.btn";
-            navWechat.Click += delegate { ShowPage(3); };
+            navWechat.Click += delegate
+            {
+                if (!RequireLogin(FeatureGate.WeChat)) return;
+                ShowPage(3);
+            };
 
             // 问题反馈：和清理体检/大文件/日志一样占一整行，点击弹出二维码
             navContact = MakeNav(I18n.T("contact.btn"), "chat");
@@ -457,8 +478,10 @@ namespace DiskMate
         {
             Api.LoadConfig();
             Session.Load();
+            FeatureGate.Load();   // 先读本地缓存立刻可用，再后台拉服务端最新开关
             UpdateAccountButton();
             Log("账号服务：" + Api.BaseUrl + (Session.IsLoggedIn ? "（已登录 " + Session.Email + "）" : "（未登录）"));
+            Log("功能开关：" + FeatureGate.Describe());
             if (!Session.IsLoggedIn) return;
 
             Task.Factory.StartNew(delegate
@@ -679,6 +702,30 @@ namespace DiskMate
         }
 
         // ============================================================ updates
+        /// <summary>启动后拉一次公告；和上次已读的 id 相同就不再打扰</summary>
+        private void StartAnnouncementCheck()
+        {
+            Task.Factory.StartNew(delegate
+            {
+                try { System.Threading.Thread.Sleep(1800); }
+                catch { }
+                Announcement a;
+                try { a = Announcement.Fetch(); }
+                catch { return; }
+                if (a == null) return;
+                if (Announcement.ReadSeenId() == a.Id) return;
+                Ui(delegate
+                {
+                    try
+                    {
+                        AnnouncementDialog.ShowAnnouncement(this, a);
+                        Announcement.MarkSeen(a.Id);   // 点 ✕ 也算已读，避免每次启动都弹
+                    }
+                    catch { }
+                });
+            });
+        }
+
         /// <summary>启动后 2.5 秒静默查一次，有新版本只在提示条里说一声，不打扰用户。</summary>
         private void StartSilentUpdateCheck()
         {
@@ -810,9 +857,13 @@ namespace DiskMate
         }
 
         // ============================================================ 登录门禁
-        /// <summary>清理体检 / 大文件扫描 / 微信专清都要求登录；未登录直接弹登录框，登录成功即继续。</summary>
-        private bool RequireLogin()
+        /// <summary>
+        /// 该功能是否必须登录由服务端下发（后台「功能开关」可随时改）；
+        /// 需要登录而当前未登录时，直接弹登录框，登录成功即继续。
+        /// </summary>
+        private bool RequireLogin(string feature)
         {
+            if (!FeatureGate.LoginRequired(feature)) return true;   // 后台把它设成免登录
             if (Session.IsLoggedIn) return true;
             AccountDialog.Show(this, delegate { UpdateAccountButton(); });
             if (Session.IsLoggedIn) return true;
@@ -824,7 +875,7 @@ namespace DiskMate
         private void BeginScan()
         {
             if (busy) return;
-            if (!RequireLogin()) return;
+            if (!RequireLogin(FeatureGate.Clean)) return;
             ShowPage(0);
             ShowPhase(0);
             busy = true;
@@ -1128,7 +1179,10 @@ namespace DiskMate
                     }
                 case "recycle":
                     {
-                        long f = Engine.EmptyRecycleBins(log);
+                        Engine.MarkRecycleStart();
+                        long f = 0;
+                        try { f = Engine.EmptyRecycleBins(log); }
+                        finally { Engine.MarkRecycleEnd(); }
                         long remain = 0;
                         try { remain = Engine.RecycleBinReport().Total; }
                         catch { }

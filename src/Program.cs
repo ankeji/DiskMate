@@ -21,7 +21,9 @@ namespace DiskMate
             string wechatTest = null;
             string authTest = null;
             string accountTest = null;
+            string announceTest = null;
             string outPath = null;
+            bool featureProbe = false;
             foreach (string a in args)
             {
                 if (a.StartsWith("--update-url=", StringComparison.OrdinalIgnoreCase))
@@ -29,6 +31,7 @@ namespace DiskMate
                 else if (string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)) selfTest = true;
                 else if (string.Equals(a, "--maskprobe", StringComparison.OrdinalIgnoreCase)) maskProbe = true;
                 else if (string.Equals(a, "--cleanprobe", StringComparison.OrdinalIgnoreCase)) cleanProbe = true;
+                else if (string.Equals(a, "--featureprobe", StringComparison.OrdinalIgnoreCase)) featureProbe = true;
                 else if (string.Equals(a, "--makeicon", StringComparison.OrdinalIgnoreCase)) makeIcon = true;
                 else if (string.Equals(a, "--langtest", StringComparison.OrdinalIgnoreCase)) langTest = true;
                 else if (string.Equals(a, "--checkupdate", StringComparison.OrdinalIgnoreCase)) checkUpdate = true;
@@ -41,6 +44,7 @@ namespace DiskMate
                 else if (a.StartsWith("--wechatdialog=", StringComparison.OrdinalIgnoreCase)) wechatTest = a.Substring("--wechatdialog=".Length);
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
+                else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
             }
 
@@ -63,6 +67,13 @@ namespace DiskMate
             {
                 UpdateService.Disabled = true;
                 RunCleanProbe();
+                return;
+            }
+
+            if (featureProbe)
+            {
+                UpdateService.Disabled = true;
+                RunFeatureProbe();
                 return;
             }
 
@@ -170,6 +181,18 @@ namespace DiskMate
                 Console.WriteLine("account dialog rendered: " + at[0]);
                 return;
             }
+            if (announceTest != null)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                string[] an = announceTest.Split('|');
+                string apath = an[0];
+                string atitle = an.Length > 1 ? an[1] : "关于清理功能的重要说明";
+                string abody = an.Length > 2 ? an[2].Replace("\\n", "\n") : "这是一条测试公告。";
+                string alevel = an.Length > 3 ? an[3] : "info";
+                AnnouncementDialog.RenderTo(apath, atitle, abody, alevel);
+                Console.WriteLine("announce dialog rendered: " + apath);
+                return;
+            }
             if (writeVersion != null)
             {
                 try { Native.AttachConsole(-1); } catch { }
@@ -224,6 +247,44 @@ namespace DiskMate
             Application.ThreadException += delegate(object s, System.Threading.ThreadExceptionEventArgs e) { LogCrash(e.Exception); };
             AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { LogCrash(e.ExceptionObject as Exception); };
             Application.Run(new MainForm());
+        }
+
+        /// <summary>
+        /// 功能开关自检：真拉一次 /api/features，把三个功能的「是否需登录」打出来。
+        /// 用法：DiskMate.exe --featureprobe（结果同时写到 exe 目录 diskmate-featureprobe.txt）
+        /// </summary>
+        private static void RunFeatureProbe()
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            var sb = new StringBuilder();
+            try
+            {
+                Api.LoadConfig();
+                sb.AppendLine("api.base = " + Api.BaseUrl);
+
+                FeatureGate.Load();                       // 和正常启动走同一条路径
+                System.Threading.Thread.Sleep(2200);      // 等后台那次刷新回来
+                sb.AppendLine("gates    = " + FeatureGate.Describe());
+                sb.AppendLine("clean    requireLogin = " + FeatureGate.LoginRequired(FeatureGate.Clean));
+                sb.AppendLine("wechat   requireLogin = " + FeatureGate.LoginRequired(FeatureGate.WeChat));
+                sb.AppendLine("big      requireLogin = " + FeatureGate.LoginRequired(FeatureGate.Big));
+
+                string cache = FeatureGate.CacheFile;
+                sb.AppendLine("cache    = " + (string.IsNullOrEmpty(cache) ? "未生成" : "已写入 " + cache));
+                if (!string.IsNullOrEmpty(FeatureGate.LastError)) sb.AppendLine("lastErr  = " + FeatureGate.LastError);
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine("probe failed: " + ex.Message);
+            }
+
+            try
+            {
+                File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "diskmate-featureprobe.txt"),
+                    sb.ToString(), Encoding.UTF8);
+            }
+            catch { }
+            Console.WriteLine(sb.ToString());
         }
 
         private static void LogCrash(Exception ex)

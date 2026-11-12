@@ -1,0 +1,25 @@
+## DiskMate v1.0.4
+
+### 中文
+
+这次主要解决「清理回收站闪退」这个最影响使用的问题，同时把大文件页做成了真的能干活，并加了后台可配置的公告与功能开关。
+
+1. 修复部分用户在清理回收站时闪退的问题：清理顺序改为先用系统文件接口逐个删除回收站内容，最后才调用系统清理接口收尾，避开了第三方 shell 扩展（杀软、网盘、右键菜单工具）导致的进程崩溃
+2. 新增「异常退出」提示：如果上次清理回收站时程序被强行结束，下次打开会在日志页给出明确提示，方便定位问题
+3. 大文件扫描新增盘符选择：列出所有磁盘与剩余空间，默认扫描 C 盘，选哪个盘扫哪个盘
+4. 大文件扫描结果支持双击打开文件所在目录，也可以勾选后点「删除选中」直接删除
+5. 删除走系统回收站（可还原），确认框会明确提示删除数量与总大小
+6. 新增公告弹窗：启动时自动获取最新公告，显示标题、正文与级别（普通 / 提醒 / 重要），点「我已知晓」后不再重复弹出
+7. 新增功能开关：清理体检、微信专清、大文件扫描是否需要登录，由后台随时控制，改完客户端下次启动生效
+
+### English
+
+This release fixes the crash some users hit while emptying the Recycle Bin, turns the large-file page into something you can actually act on, and adds server-side announcements plus per-feature login switches.
+
+1. Fixed the Recycle Bin crash: cleanup now deletes the bin's contents through plain file APIs first and only calls the shell API at the end, avoiding crashes caused by third-party shell extensions (antivirus, cloud drives, context-menu tools)
+2. New "unclean exit" notice: if the app was killed during a Recycle Bin cleanup, the log page tells you on next launch
+3. Large-file scan now lets you pick a drive: all fixed disks with free space are listed, C: is the default
+4. Double-click a result to open its folder, or tick items and hit "Delete selected"
+5. Deletions go to the Recycle Bin (undoable), with a confirmation showing item count and total size
+6. New announcement dialog: fetched at startup, shows title, body and level (info / heads-up / important); "Got it" stops it from showing again
+7. New feature switches: whether Cleanup Check, WeChat Cleanup and Large Files require sign-in is now controlled from the admin panel and applies on the next launch

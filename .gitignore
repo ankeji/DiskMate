@@ -8,6 +8,7 @@ app.ico
 # runtime artifacts
 update-cache/
 settings.ini
+features.ini
 debug.log
 *.failed
 
@@ -16,6 +17,7 @@ _test/
 *.bundle
 _render-*.png
 diskmate-selftest.txt
+diskmate-featureprobe.txt
 
 # IDE
 .vs/

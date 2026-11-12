@@ -605,11 +605,21 @@ namespace DiskMate
             bar.BackColor = Theme.Bg;
             pageBig.Controls.Add(bar);
 
+            cmbDrive = new ComboBox();
+            cmbDrive.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbDrive.FlatStyle = FlatStyle.Flat;
+            cmbDrive.Font = Theme.Base;
+            cmbDrive.ItemHeight = Theme.P(22);
+            cmbDrive.Size = new Size(Theme.P(132), Theme.P(30));
+            cmbDrive.Location = new Point(Theme.P(0), Theme.P(14));
+            FillBigDrives();     // 默认选中 C 盘
+            bar.Controls.Add(cmbDrive);
+
             btnBigScan = new FlatButton();
             btnBigScan.Kind = BtnKind.Primary;
             Txt(btnBigScan, "big.btn");
-            btnBigScan.Size = new Size(Theme.P(140), Theme.P(38));
-            btnBigScan.Location = new Point(Theme.P(0), Theme.P(10));
+            btnBigScan.Size = new Size(Theme.P(132), Theme.P(38));
+            btnBigScan.Location = new Point(Theme.P(144), Theme.P(10));
             btnBigScan.Click += delegate { StartBigScan(); };
             bar.Controls.Add(btnBigScan);
 
@@ -618,19 +628,29 @@ namespace DiskMate
             cmbThreshold.FlatStyle = FlatStyle.Flat;
             cmbThreshold.Font = Theme.Base;
             cmbThreshold.ItemHeight = Theme.P(22);
-            cmbThreshold.Size = new Size(Theme.P(140), Theme.P(30));
-            cmbThreshold.Location = new Point(Theme.P(152), Theme.P(14));
+            cmbThreshold.Size = new Size(Theme.P(130), Theme.P(30));
+            cmbThreshold.Location = new Point(Theme.P(288), Theme.P(14));
             FillThresholds();   // 内部会填选项并选中默认项（200 MB）
             bar.Controls.Add(cmbThreshold);
 
             lblBigHint = new Label();
             lblBigHint.AutoSize = false;
             lblBigHint.AutoEllipsis = true;   // 窗口变窄时不硬挤，末尾省略
-            lblBigHint.Location = new Point(Theme.P(306), Theme.P(14));
-            lblBigHint.Size = new Size(Theme.P(520), Theme.P(30));
+            lblBigHint.Location = new Point(Theme.P(432), Theme.P(14));
+            lblBigHint.Size = new Size(Theme.P(380), Theme.P(30));
             lblBigHint.ForeColor = Theme.TextSub;
             Txt(lblBigHint, "big.idle");
             bar.Controls.Add(lblBigHint);
+
+            btnBigDelete = new FlatButton();
+            btnBigDelete.Kind = BtnKind.Danger;
+            Txt(btnBigDelete, "big.delete");
+            btnBigDelete.Icon = "trash";
+            btnBigDelete.Enabled = false;
+            btnBigDelete.Size = new Size(Theme.P(120), Theme.P(36));
+            btnBigDelete.Location = new Point(Theme.P(660), Theme.P(11));
+            btnBigDelete.Click += delegate { DeleteBigSelected(); };
+            bar.Controls.Add(btnBigDelete);
 
             btnBigReveal = new FlatButton();
             btnBigReveal.Kind = BtnKind.Secondary;
@@ -645,7 +665,8 @@ namespace DiskMate
             bar.Resize += delegate
             {
                 btnBigReveal.Location = new Point(bar.Width - btnBigReveal.Width, Theme.P(12));
-                lblBigHint.Width = Math.Max(Theme.P(120), btnBigReveal.Left - Theme.P(20) - lblBigHint.Left);
+                btnBigDelete.Location = new Point(btnBigReveal.Left - Theme.P(8) - btnBigDelete.Width, Theme.P(12));
+                lblBigHint.Width = Math.Max(Theme.P(100), btnBigDelete.Left - Theme.P(16) - lblBigHint.Left);
             };
 
             var card = new CardPanel();
@@ -665,8 +686,10 @@ namespace DiskMate
             lvBig.SmallImageList = bigRows;
             lvBig.Columns.Add(I18n.T("big.colsize"), Theme.P(110), HorizontalAlignment.Right);
             lvBig.Columns.Add(I18n.T("big.colpath"), Theme.P(560));
+            lvBig.CheckBoxes = true;   // 勾选后可批量移到回收站
             lvBig.DoubleClick += delegate { RevealBigFile(); };
             lvBig.SelectedIndexChanged += delegate { UpdateBigButtons(); };
+            lvBig.ItemCheck += delegate { BeginInvoke((MethodInvoker)UpdateBigButtons); };
 
             var bigHost = new Panel();
             bigHost.Dock = DockStyle.Fill;
@@ -706,7 +729,7 @@ namespace DiskMate
         private void StartBigScan()
         {
             if (busy) return;
-            if (!RequireLogin()) return;
+            if (!RequireLogin(FeatureGate.Big)) return;
             busy = true;
             scanCancel = false;
             btnBigScan.Enabled = false;
@@ -720,10 +743,13 @@ namespace DiskMate
             {
                 var result = new List<KeyValuePair<string, long>>();
                 var roots = new List<string>();
-                roots.Add(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-                roots.Add(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
-                roots.Add("C:\\Program Files");
-                roots.Add("C:\\Program Files (x86)");
+
+                // 扫描哪个盘由下拉框决定（默认 C 盘）
+                string driveRoot = null;
+                int di = cmbDrive == null ? -1 : cmbDrive.SelectedIndex;
+                if (di >= 0 && di < bigDrives.Count) driveRoot = bigDrives[di].RootDirectory.FullName;
+                if (string.IsNullOrEmpty(driveRoot)) driveRoot = "C:\\";
+                roots.Add(driveRoot);
 
                 var stack = new Stack<string>();
                 foreach (string r in roots) if (Directory.Exists(r)) stack.Push(r);
@@ -759,9 +785,9 @@ namespace DiskMate
                         {
                             try
                             {
-                                var di = new DirectoryInfo(d);
-                                if ((di.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                                if (di.Name.Equals("WinSxS", StringComparison.OrdinalIgnoreCase)) continue;
+                                var di2 = new DirectoryInfo(d);
+                                if ((di2.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                                if (SkipBigDir(di2.Name)) continue;
                                 stack.Push(d);
                             }
                             catch { }
@@ -818,7 +844,7 @@ namespace DiskMate
             cmbThreshold.SelectedIndex = keep >= 0 && keep < cmbThreshold.Items.Count ? keep : 1;
         }
 
-        /// <summary>没选中行时「打开位置」不可点</summary>
+        /// <summary>没选中行时「打开位置」不可点；没勾选时「删除选中」不可点</summary>
         private void UpdateBigButtons()
         {
             if (btnBigReveal == null) return;
@@ -828,6 +854,108 @@ namespace DiskMate
                 btnBigReveal.Enabled = has;
                 btnBigReveal.Invalidate();
             }
+            if (btnBigDelete != null)
+            {
+                bool del = lvBig != null && lvBig.CheckedItems.Count > 0;
+                if (btnBigDelete.Enabled != del)
+                {
+                    btnBigDelete.Enabled = del;
+                    btnBigDelete.Invalidate();
+                }
+            }
+        }
+
+        /// <summary>盘符下拉：默认 C 盘；扫描时按选中盘定位根目录</summary>
+        private void FillBigDrives()
+        {
+            if (cmbDrive == null) return;
+            int keep = cmbDrive.SelectedIndex;
+            bigDrives.Clear();
+            cmbDrive.BeginUpdate();
+            try
+            {
+                cmbDrive.Items.Clear();
+                foreach (DriveInfo d in DriveInfo.GetDrives())
+                {
+                    try
+                    {
+                        if (d.DriveType != DriveType.Fixed || !d.IsReady) continue;
+                        bigDrives.Add(d);
+                        cmbDrive.Items.Add(d.Name.Substring(0, 2) + "  可用 " + Theme.Fmt(d.AvailableFreeSpace));
+                    }
+                    catch { }
+                }
+            }
+            finally { cmbDrive.EndUpdate(); }
+
+            int idx = 0;   // 默认目标就是 C 盘
+            for (int i = 0; i < bigDrives.Count; i++)
+            {
+                if (bigDrives[i].Name.StartsWith("C:", StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+            }
+            if (keep >= 0 && keep < cmbDrive.Items.Count) idx = keep;
+            if (cmbDrive.Items.Count > 0) cmbDrive.SelectedIndex = idx;
+        }
+
+        /// <summary>整盘扫描时跳过这些目录：系统还原点/回收站/组件库，扫进去只有噪音</summary>
+        private static bool SkipBigDir(string name)
+        {
+            return name.Equals("WinSxS", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("$Recycle.Bin", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("System Volume Information", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("Recovery", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("Config.Msi", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("CSC", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>删除勾选的大文件：走回收站，误删还能还原</summary>
+        private void DeleteBigSelected()
+        {
+            if (lvBig == null) return;
+            var paths = new List<string>();
+            long total = 0;
+            foreach (ListViewItem it in lvBig.CheckedItems)
+            {
+                string p = it.SubItems[1].Text;
+                try
+                {
+                    var fi = new FileInfo(p);
+                    if (!fi.Exists) continue;
+                    paths.Add(p);
+                    total += fi.Length;
+                }
+                catch { }
+            }
+            if (paths.Count == 0)
+            {
+                ShowBanner(BannerKind.Warn, I18n.T("big.delNone"), 6);
+                return;
+            }
+            if (!MessageDialog.Ask(this, I18n.T("big.delTitle"),
+                    I18n.F("big.delAsk", paths.Count, Theme.Fmt(total)), I18n.T("big.delOk"), true))
+                return;
+
+            var log = new StringBuilder();
+            Task.Factory.StartNew(delegate
+            {
+                int gone = Engine.RecycleFiles(paths, log);
+                Ui(delegate
+                {
+                    if (log.Length > 0) Log(log.ToString().TrimEnd());
+                    Log(string.Format("大文件删除：{0}/{1} 个", gone, paths.Count));
+                    var remove = new List<ListViewItem>();
+                    foreach (ListViewItem it in lvBig.Items) if (it.Checked) remove.Add(it);
+                    foreach (ListViewItem it in remove) lvBig.Items.Remove(it);
+                    lblBigHint.Text = I18n.F("big.delDone", gone, Theme.Fmt(total));
+                    if (lvBig.Items.Count == 0 && lblBigEmpty != null)
+                    {
+                        lblBigEmpty.Visible = true;
+                        lblBigEmpty.Text = I18n.T("big.noneAfterDel");
+                    }
+                    UpdateBigButtons();
+                    ShowBanner(BannerKind.Success, I18n.F("big.delDone", gone, Theme.Fmt(total)), 8);
+                });
+            }, TaskCreationOptions.LongRunning);
         }
 
         private void RevealBigFile()

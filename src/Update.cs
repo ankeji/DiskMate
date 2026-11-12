@@ -12,7 +12,7 @@ namespace DiskMate
     public static class AppInfo
     {
         /// <summary>程序版本。发版时改这里（tag 用 v + 同样的数字）。</summary>
-        public const string Version = "1.0.3";
+        public const string Version = "1.0.4";
 
         /// <summary>GitHub 仓库。</summary>
         public const string Repo = "ankeji/DiskMate";
