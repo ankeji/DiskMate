@@ -115,8 +115,12 @@ namespace DiskMate
             return Send("POST", path, body, token);
         }
 
+        /// <summary>离线模式：自检/离线探针用，直接失败不碰网络（CI 上不该等超时）</summary>
+        public static bool Offline;
+
         public static ApiResult Send(string method, string path, string body, string token)
         {
+            if (Offline) return NetworkFail("离线模式：已跳过网络请求");
             string url = BaseUrl.TrimEnd('/') + path;
             try
             {

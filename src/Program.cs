@@ -467,6 +467,7 @@ namespace DiskMate
         private static void RunSelfTest()
         {
             try { Native.AttachConsole(-1); } catch { }
+            Api.Offline = true;   // 自检不联网：CI 上连不到国内服务器会一直等超时
             var sb = new StringBuilder();
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             try
