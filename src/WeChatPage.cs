@@ -13,6 +13,7 @@ namespace DiskMate
         // ---- 微信专清页
         private Label lblWcPath, lblWcHint, lblWcEmpty;
         private FlatButton btnWcPick, btnWcScan, btnWcClean;
+        private CheckBox chkWcForce;
         private ListView lvWc;
         private string wcRoot;
         private bool wcBusy;
@@ -58,6 +59,18 @@ namespace DiskMate
             btnWcClean.Location = new Point(Theme.P(660), Theme.P(11));
             btnWcClean.Click += delegate { CleanWeChatSelected(); };
             bar.Controls.Add(btnWcClean);
+
+            // 回收站被禁用 / 文件被占用时，勾上这个就直接用管理员权限删（不进回收站）
+            chkWcForce = new CheckBox();
+            chkWcForce.AutoSize = false;
+            chkWcForce.FlatStyle = FlatStyle.Flat;
+            chkWcForce.Font = Theme.Small;
+            chkWcForce.ForeColor = Theme.TextSub;
+            chkWcForce.BackColor = Theme.Bg;
+            chkWcForce.Size = new Size(Theme.P(200), Theme.P(24));
+            chkWcForce.Location = new Point(Theme.P(460), Theme.P(17));
+            Txt(chkWcForce, "wechat.forceMode");
+            bar.Controls.Add(chkWcForce);
 
             lblWcPath = new Label();
             lblWcPath.AutoSize = false;
@@ -134,6 +147,13 @@ namespace DiskMate
             if (bar != null) bar.SetBounds(Theme.P(0), Theme.P(0), w, Theme.P(92));
 
             btnWcClean.Location = new Point(Math.Max(Theme.P(0), w - btnWcClean.Width), Theme.P(11));
+
+            if (chkWcForce != null)
+            {
+                int cw = Theme.P(200);
+                int cx = btnWcClean.Left - Theme.P(12) - cw;
+                chkWcForce.SetBounds(Math.Max(Theme.P(300), cx), Theme.P(17), cw, Theme.P(24));
+            }
 
             if (lblWcHint != null)
             {
@@ -214,6 +234,35 @@ namespace DiskMate
         }
 
         /// <summary>把扫描结果刷到列表上；扫描中由定时器反复调用</summary>
+        /// <summary>
+        /// 清理完成后立刻把已删掉的文件从统计里剔除，界面马上显示真实剩余，
+        /// 不用等整盘重扫（2 GB 目录要扫一两分钟，用户会以为没删掉）。
+        /// </summary>
+        private void PruneWcCats()
+        {
+            foreach (KeyValuePair<string, WeChatCategory> kv in wcCats)
+            {
+                WeChatCategory c = kv.Value;
+                var keep = new List<string>();
+                long size = 0;
+                foreach (string f in c.Files)
+                {
+                    try
+                    {
+                        if (!File.Exists(f)) continue;
+                        keep.Add(f);
+                        size += new FileInfo(f).Length;
+                    }
+                    catch { }
+                }
+                c.Files.Clear();
+                c.Files.AddRange(keep);
+                c.Count = keep.Count;
+                c.Size = size;
+            }
+            RefreshWeChatRows();
+        }
+
         private void RefreshWeChatRows()
         {
             if (lvWc == null) return;
@@ -364,18 +413,42 @@ namespace DiskMate
 
             if (files.Count == 0)
             {
-                ShowBanner(BannerKind.Warn, I18n.T("wechat.pick"), 6);
+                ShowBanner(BannerKind.Warn, I18n.T("wechat.pick"), 10);
                 return;
             }
 
-            if (!MessageDialog.Ask(this, I18n.T("wechat.delTitle"),
-                    I18n.F("wechat.delAsk", files.Count, Theme.Fmt(total)),
-                    I18n.T("wechat.delOk"), true))
+            bool direct = chkWcForce != null && chkWcForce.Checked;
+
+            string askTitle = I18n.T(direct ? "wechat.delTitleForce" : "wechat.delTitle");
+            string askText = I18n.F(direct ? "wechat.delAskForce" : "wechat.delAsk", files.Count, Theme.Fmt(total));
+            string askOk = I18n.T(direct ? "wechat.delOkForce" : "wechat.delOk");
+
+            if (!MessageDialog.Ask(this, askTitle, askText, askOk, true))
                 return;
 
             wcBusy = true;
             btnWcClean.Enabled = false;
             btnWcScan.Enabled = false;
+
+            if (direct)
+            {
+                // 用户明确要求直接删：跳过回收站，管理员权限 DeleteFileW
+                lblWcHint.Text = I18n.T("wechat.forcing");
+                Log("微信专清：直接删除 " + files.Count + " 个文件（共 " + Theme.Fmt(total) + "）");
+
+                Task.Factory.StartNew(delegate
+                {
+                    int failed = 0;
+                    long freed = 0;
+                    var log = new StringBuilder();
+                    try { freed = Engine.ForceDeleteFiles(files, log, out failed); }
+                    catch (Exception ex) { log.AppendLine("    强制删除异常：" + ex.Message); failed = files.Count; }
+
+                    Ui(delegate { FinishWcClean(freed, failed, log); });
+                }, TaskCreationOptions.LongRunning);
+                return;
+            }
+
             lblWcHint.Text = I18n.T("wechat.cleaning");
 
             Task.Factory.StartNew(delegate
@@ -434,15 +507,17 @@ namespace DiskMate
             wcBusy = false;
 
             if (failed > 0)
-                ShowBanner(BannerKind.Warn, I18n.F("wechat.partial", failed, Theme.Fmt(freed)), 10);
+                ShowBanner(BannerKind.Warn, I18n.F("wechat.partial", failed, Theme.Fmt(freed)), 14);
             else
-                ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 8);
+                ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 14);
 
             Log("微信专清：释放 " + Theme.Fmt(freed) + (failed > 0 ? "，仍有 " + failed + " 个文件没删掉" : ""));
             if (log != null && log.Length > 0) Log(log.ToString().TrimEnd());
 
             Session.PingActivity("wechat");
-            StartWeChatScan();     // 清完自动重扫，列表立刻反映真实剩余
+
+            PruneWcCats();         // 界面立刻反映剩余，不等重扫
+            StartWeChatScan();     // 再后台重扫一遍，确认磁盘真实状态
         }
 
         // ------------------------------------------------------------ 调试/自检
@@ -483,6 +558,7 @@ namespace DiskMate
             var sb = new StringBuilder();
             sb.AppendLine("page=" + pageWechat.Width + "x" + pageWechat.Height);
             sb.AppendLine("pick=" + btnWcPick.Bounds + " scan=" + btnWcScan.Bounds + " clean=" + btnWcClean.Bounds);
+            if (chkWcForce != null) sb.AppendLine("forceChk=" + chkWcForce.Bounds + " checked=" + chkWcForce.Checked + " text=[" + chkWcForce.Text + "]");
             sb.AppendLine("path=" + lblWcPath.Bounds + " hint=" + lblWcHint.Bounds);
             sb.AppendLine("list=" + lvWc.Bounds + " rows=" + lvWc.Items.Count);
             sb.AppendLine("hintText=" + lblWcHint.Text);
@@ -513,11 +589,26 @@ namespace DiskMate
         /// <summary>调试用：对某个类别做一次清理（回收站），返回释放字节</summary>
         public long TestCleanWeChat(string key)
         {
+            return TestCleanWeChat(key, false);
+        }
+
+        /// <summary>调试用：direct = 直接强删（等同勾上「直接删除，不进回收站」）</summary>
+        public long TestCleanWeChat(string key, bool direct)
+        {
             WeChatCategory c;
             if (!wcCats.TryGetValue(key, out c)) return 0;
 
             var files = new List<string>(c.Files);
             var log = new StringBuilder();
+
+            if (direct)
+            {
+                int df;
+                long d = Engine.ForceDeleteFiles(files, log, out df);
+                Console.WriteLine("  direct : freed=" + Theme.Fmt(d) + " failed=" + df);
+                if (log.Length > 0) Console.WriteLine(log.ToString().TrimEnd());
+                return d;
+            }
 
             int failed;
             long freed = WeChatScanner.RecycleToBin(files, log, out failed);

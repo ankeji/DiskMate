@@ -22,6 +22,7 @@ namespace DiskMate
             bool wechatProbe = false;
             string wechatProbeRoot = null;
             string wcCleanKey = null;
+            bool wcForce = false;
             string recycleTest = null;
             string forceTest = null;
             string authTest = null;
@@ -59,6 +60,7 @@ namespace DiskMate
                 else if (a.StartsWith("--wechatprobe=", StringComparison.OrdinalIgnoreCase)) { wechatProbe = true; wechatProbeRoot = a.Substring("--wechatprobe=".Length); }
                 else if (string.Equals(a, "--wechatprobe", StringComparison.OrdinalIgnoreCase)) wechatProbe = true;
                 else if (a.StartsWith("--wcclean=", StringComparison.OrdinalIgnoreCase)) wcCleanKey = a.Substring("--wcclean=".Length);
+                else if (string.Equals(a, "--wcforce", StringComparison.OrdinalIgnoreCase)) wcForce = true;
                 else if (a.StartsWith("--recycletest=", StringComparison.OrdinalIgnoreCase)) recycleTest = a.Substring("--recycletest=".Length);
                 else if (a.StartsWith("--forcedeltest=", StringComparison.OrdinalIgnoreCase)) forceTest = a.Substring("--forcedeltest=".Length);
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
@@ -248,7 +250,7 @@ namespace DiskMate
             if (wechatProbe)
             {
                 UpdateService.Disabled = true;
-                RunWeChatProbe(wechatProbeRoot, wcCleanKey);
+                RunWeChatProbe(wechatProbeRoot, wcCleanKey, wcForce);
                 return;
             }
 
@@ -458,7 +460,7 @@ namespace DiskMate
         /// 调试用：对微信目录跑一次扫描，验证四类统计。
         /// 用法：DiskMate.exe --wechatprobe[=目录]（不传目录就用自动检测到的）
         /// </summary>
-        private static void RunWeChatProbe(string rootHint, string cleanKey)
+        private static void RunWeChatProbe(string rootHint, string cleanKey, bool forceDirect)
         {
             try { Native.AttachConsole(-1); } catch { }
             Announcement.Suppressed = true;
@@ -481,7 +483,7 @@ namespace DiskMate
 
                     if (!string.IsNullOrEmpty(cleanKey))
                     {
-                        long freed = form.TestCleanWeChat(cleanKey);
+                        long freed = form.TestCleanWeChat(cleanKey, forceDirect);
                         Console.WriteLine("[clean ] key=" + cleanKey + " freed=" + Theme.Fmt(freed));
                         Console.WriteLine("[state ] " + form.TestWeChatState());
                     }

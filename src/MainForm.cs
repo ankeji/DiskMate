@@ -138,6 +138,13 @@ namespace DiskMate
             BootstrapAccount();
             Log("程序启动  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             Log("管理员权限：" + (IsAdmin() ? "是" : "否"));
+            try
+            {
+                string exe = Application.ExecutablePath;
+                Log("程序文件：" + exe + "（" + File.GetLastWriteTime(exe).ToString("yyyy-MM-dd HH:mm") + "，"
+                    + new FileInfo(exe).Length + " 字节）");
+            }
+            catch { }
             CheckInterruptedCleanup();
         }
 
