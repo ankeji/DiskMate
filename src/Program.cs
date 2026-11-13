@@ -24,6 +24,7 @@ namespace DiskMate
             string announceTest = null;
             string fbPageShot = null;
             string fbDialogShot = null;
+            string fbSubmitTest = null;
             string outPath = null;
             bool featureProbe = false;
             bool announceProbe = false;
@@ -54,7 +55,15 @@ namespace DiskMate
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
                 else if (a.StartsWith("--feedbackpage=", StringComparison.OrdinalIgnoreCase)) fbPageShot = a.Substring("--feedbackpage=".Length);
                 else if (a.StartsWith("--feedbackdialog=", StringComparison.OrdinalIgnoreCase)) fbDialogShot = a.Substring("--feedbackdialog=".Length);
+                else if (a.StartsWith("--fbsubmit=", StringComparison.OrdinalIgnoreCase)) fbSubmitTest = a.Substring("--fbsubmit=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
+            }
+
+            if (fbSubmitTest != null)
+            {
+                UpdateService.Disabled = true;
+                RunFeedbackSubmit(fbSubmitTest);
+                return;
             }
 
             if (fbDialogShot != null)
@@ -299,6 +308,20 @@ namespace DiskMate
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
         /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        /// <summary>调试用：走客户端同一条路径提交一条反馈（--fbsubmit=标题|内容）</summary>
+        private static void RunFeedbackSubmit(string arg)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            Api.LoadConfig();
+            int bar = arg.IndexOf('|');
+            string title = bar > 0 ? arg.Substring(0, bar) : arg;
+            string content = bar > 0 ? arg.Substring(bar + 1) : "";
+            string err;
+            int id = FeedbackService.Submit(title, content, out err);
+            Console.WriteLine("api=" + Api.BaseUrl);
+            Console.WriteLine(id > 0 ? "submitted id=" + id : "failed: " + err);
+        }
+
         private static void RenderFeedbackPage(string path)
         {
             try { Native.AttachConsole(-1); } catch { }
