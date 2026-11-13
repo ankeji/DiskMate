@@ -245,7 +245,7 @@ api.base=http://192.168.1.10:8099
 
 ```
 DiskMate.exe --buildinfo
-version=1.0.5
+version=1.0.4
 channel=prod
 api=https://c.softinstall.top
 ```

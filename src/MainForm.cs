@@ -703,7 +703,7 @@ namespace DiskMate
         }
 
         // ============================================================ updates
-        /// <summary>启动后拉一次公告；和上次已读的 id 相同就不再打扰</summary>
+        /// <summary>启动后拉一次公告；id 和更新时间都没变就不再打扰</summary>
         private void StartAnnouncementCheck()
         {
             Task.Factory.StartNew(delegate
@@ -714,13 +714,15 @@ namespace DiskMate
                 try { a = Announcement.Fetch(); }
                 catch { return; }
                 if (a == null) return;
-                if (Announcement.ReadSeenId() == a.Id) return;
+                bool skip = Announcement.ReadSeenKey() == a.SeenKey;
                 Ui(delegate
                 {
+                    Log("公告：id=" + a.Id + "（" + a.UpdatedAt + "）" + (skip ? " 已读过，跳过" : " 弹出"));
+                    if (skip) return;
                     try
                     {
                         AnnouncementDialog.ShowAnnouncement(this, a);
-                        Announcement.MarkSeen(a.Id);   // 点 ✕ 也算已读，避免每次启动都弹
+                        Announcement.MarkSeen(a.SeenKey);   // 点 ✕ 也算已读，避免每次启动都弹
                     }
                     catch { }
                 });

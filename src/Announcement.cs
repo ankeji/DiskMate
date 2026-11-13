@@ -9,7 +9,8 @@ namespace DiskMate
 {
     /// <summary>
     /// 服务端公告：后台录入，客户端启动时拉最新一条。
-    /// 点「我已知晓」或右上角关闭都把 id 记到本地，之后不再重复弹同一条。
+    /// 点「我已知晓」或右上角关闭都把「id + 更新时间」记到本地，之后不再重复弹同一条。
+    /// 只记 id 的话，后台把同一条公告改内容后用户就再也看不到了。
     /// </summary>
     internal class Announcement
     {
@@ -17,6 +18,13 @@ namespace DiskMate
         public string Title = "";
         public string Body = "";
         public string Level = "info";
+        public string UpdatedAt = "";
+
+        /// <summary>已读标记：id 相同但内容改过（updatedAt 变了）会重新弹一次</summary>
+        public string SeenKey
+        {
+            get { return Id + "|" + UpdatedAt; }
+        }
 
         private static string SeenFile
         {
@@ -29,20 +37,19 @@ namespace DiskMate
             }
         }
 
-        public static int ReadSeenId()
+        public static string ReadSeenKey()
         {
             try
             {
-                if (!File.Exists(SeenFile)) return 0;
-                int id;
-                return int.TryParse(File.ReadAllText(SeenFile).Trim(), out id) ? id : 0;
+                if (!File.Exists(SeenFile)) return "";
+                return File.ReadAllText(SeenFile).Trim();
             }
-            catch { return 0; }
+            catch { return ""; }
         }
 
-        public static void MarkSeen(int id)
+        public static void MarkSeen(string key)
         {
-            try { File.WriteAllText(SeenFile, id.ToString()); } catch { }
+            try { File.WriteAllText(SeenFile, key ?? ""); } catch { }
         }
 
         /// <summary>拉最新公告。网络失败或无公告都返回 null —— 公告不能拖慢启动。</summary>
@@ -58,6 +65,7 @@ namespace DiskMate
             a.Title = MiniJson.Str(d, "title");
             a.Body = MiniJson.Str(d, "body");
             a.Level = MiniJson.Str(d, "level");
+            a.UpdatedAt = MiniJson.Str(d, "updatedAt");
             if (a.Id <= 0 || a.Title.Length == 0) return null;
             return a;
         }

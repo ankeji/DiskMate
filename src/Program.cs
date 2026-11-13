@@ -24,6 +24,7 @@ namespace DiskMate
             string announceTest = null;
             string outPath = null;
             bool featureProbe = false;
+            bool announceProbe = false;
             string buildInfo = null;   // "--buildinfo" 打印到控制台；"--buildinfo=file" 同时写文件（CI 校验用）
             foreach (string a in args)
             {
@@ -35,6 +36,7 @@ namespace DiskMate
                 else if (string.Equals(a, "--maskprobe", StringComparison.OrdinalIgnoreCase)) maskProbe = true;
                 else if (string.Equals(a, "--cleanprobe", StringComparison.OrdinalIgnoreCase)) cleanProbe = true;
                 else if (string.Equals(a, "--featureprobe", StringComparison.OrdinalIgnoreCase)) featureProbe = true;
+                else if (string.Equals(a, "--announceprobe", StringComparison.OrdinalIgnoreCase)) announceProbe = true;
                 else if (string.Equals(a, "--makeicon", StringComparison.OrdinalIgnoreCase)) makeIcon = true;
                 else if (string.Equals(a, "--langtest", StringComparison.OrdinalIgnoreCase)) langTest = true;
                 else if (string.Equals(a, "--checkupdate", StringComparison.OrdinalIgnoreCase)) checkUpdate = true;
@@ -85,6 +87,13 @@ namespace DiskMate
             {
                 UpdateService.Disabled = true;
                 RunCleanProbe();
+                return;
+            }
+
+            if (announceProbe)
+            {
+                UpdateService.Disabled = true;
+                RunAnnounceProbe();
                 return;
             }
 
@@ -265,6 +274,41 @@ namespace DiskMate
             Application.ThreadException += delegate(object s, System.Threading.ThreadExceptionEventArgs e) { LogCrash(e.Exception); };
             AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { LogCrash(e.ExceptionObject as Exception); };
             Application.Run(new MainForm());
+        }
+
+        /// <summary>
+        /// 公告自检：真拉一次 /api/announcements/latest，打印 id / 更新时间 / 本地已读标记 / 这次会不会弹。
+        /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
+        /// </summary>
+        private static void RunAnnounceProbe()
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            var sb = new StringBuilder();
+            try
+            {
+                Api.LoadConfig();
+                sb.AppendLine("api      = " + Api.BaseUrl);
+                Announcement a = Announcement.Fetch();
+                if (a == null)
+                {
+                    sb.AppendLine("announce = (没有可弹的公告，或接口拉取失败)");
+                }
+                else
+                {
+                    sb.AppendLine("id       = " + a.Id);
+                    sb.AppendLine("title    = " + a.Title);
+                    sb.AppendLine("level    = " + a.Level);
+                    sb.AppendLine("updated  = " + a.UpdatedAt);
+                    sb.AppendLine("seenKey  = " + a.SeenKey);
+                    sb.AppendLine("seenLocal= " + Announcement.ReadSeenKey());
+                    sb.AppendLine("wouldShow= " + (Announcement.ReadSeenKey() != a.SeenKey ? "yes" : "no（已读过）"));
+                }
+            }
+            catch (Exception ex) { sb.AppendLine("probe failed: " + ex.Message); }
+
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "diskmate-announceprobe.txt");
+            try { File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false)); } catch { }
+            Console.Write(sb.ToString());
         }
 
         /// <summary>
