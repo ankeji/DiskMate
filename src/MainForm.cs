@@ -71,7 +71,7 @@ namespace DiskMate
         private FlatButton btnBigScan, btnBigReveal, btnBigDelete, btnBigPause;
         private Label lblBigHint;
         private Label lblBigEmpty;
-        private ComboBox cmbThreshold, cmbDrive;
+        private FlatSelect cmbThreshold, cmbDrive;
         private readonly List<DriveInfo> bigDrives = new List<DriveInfo>();
 
         // 大文件扫描的实时联动状态
@@ -374,10 +374,9 @@ namespace DiskMate
             int bh = Theme.P(52);
             if (bannerHost != null)
             {
-                // 悬浮在页面底部居中（toast 样式）：不占 layout，出现/消失都不会让页面跳动
-                int bw = Math.Min(Theme.P(720), Math.Max(Theme.P(320), w - Theme.P(96)));
-                int by = Math.Max(Theme.P(86), h - bh - Theme.P(18));
-                bannerHost.SetBounds((w - bw) / 2, by, bw, bh);
+                // 悬浮在顶部居中：不占 layout，出现/消失都不会让页面跳动
+                int bw = Math.Min(Theme.P(760), Math.Max(Theme.P(320), w - Theme.P(96)));
+                bannerHost.SetBounds((w - bw) / 2, Theme.P(12), bw, bh);
                 if (bannerHost.Visible) bannerHost.BringToFront();
             }
             content.SetBounds(Theme.P(0), y, w, Math.Max(Theme.P(0), h - y));
@@ -1127,6 +1126,7 @@ namespace DiskMate
             {
                 var log = new StringBuilder();
                 long freed = 0;
+                var freedEach = new Dictionary<CleanItem, long>();
                 long before = Engine.TotalFree();
                 int count = chosen.Count;
 
@@ -1144,11 +1144,16 @@ namespace DiskMate
                     {
                         long f = Execute(it, log);
                         freed += f;
+                        freedEach[it] = f;
                         lock (log) log.AppendLine("    " + it.Name + " → 释放 " + Theme.Fmt(f));
                     }
                     catch (Exception ex) { lock (log) log.AppendLine("    失败：" + ex.Message); }
                 }
                 long after = Engine.TotalFree();
+
+                // 收尾：这里不再逐个目录重新统计（那等于把整盘再扫一遍，界面会长时间停在“正在清理”）。
+                // 直接按“原大小 - 实际删掉的字节”估算剩余，只有回收站需要真的查一次。
+                Ui(delegate { lblWorkStep.Text = I18n.T("work.finishing"); });
 
                 var remain = new Dictionary<CleanItem, long>();
                 foreach (CleanItem it in chosen)
@@ -1156,24 +1161,22 @@ namespace DiskMate
                     long r = 0;
                     try
                     {
-                        if (it.Kind == "dir")
+                        long removed;
+                        freedEach.TryGetValue(it, out removed);
+
+                        if (it.Kind == "recycle")
                         {
-                            // 与扫描同口径：只统计还能删的字节，被占用部分不显示（避免"显示有大小、清理释放 0"）
-                            foreach (string t in it.Targets)
-                            {
-                                try { r += Engine.Measurable(t, null).Free; }
-                                catch { }
-                            }
+                            try { r = Engine.RecycleBinReport().Total; }
+                            catch { r = 0; }
                         }
                         else if (it.Kind == "hiber")
                         {
                             string hf = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "hiberfil.sys");
-                            r = File.Exists(hf) ? it.Size : 0;
+                            r = File.Exists(hf) ? Math.Max(0, it.Size - removed) : 0;
                         }
-                        else if (it.Kind == "recycle")
+                        else
                         {
-                            try { r = Engine.RecycleBinReport().Total; }
-                            catch { r = 0; }
+                            r = Math.Max(0, it.Size - removed);
                         }
                     }
                     catch { }

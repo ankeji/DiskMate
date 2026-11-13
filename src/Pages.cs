@@ -605,40 +605,32 @@ namespace DiskMate
             bar.BackColor = Theme.Bg;
             pageBig.Controls.Add(bar);
 
-            cmbDrive = new ComboBox();
-            cmbDrive.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbDrive.FlatStyle = FlatStyle.Flat;
-            cmbDrive.Font = Theme.Base;
-            cmbDrive.ItemHeight = Theme.P(22);
-            cmbDrive.Size = new Size(Theme.P(132), Theme.P(30));
-            cmbDrive.Location = new Point(Theme.P(0), Theme.P(14));
+            cmbDrive = new FlatSelect();
+            cmbDrive.Size = new Size(Theme.P(150), Theme.P(36));
+            cmbDrive.Location = new Point(Theme.P(0), Theme.P(11));
             FillBigDrives();     // 默认选中 C 盘
             bar.Controls.Add(cmbDrive);
 
             btnBigScan = new FlatButton();
             btnBigScan.Kind = BtnKind.Primary;
             Txt(btnBigScan, "big.btn");
-            btnBigScan.Size = new Size(Theme.P(132), Theme.P(38));
-            btnBigScan.Location = new Point(Theme.P(144), Theme.P(10));
+            btnBigScan.Size = new Size(Theme.P(132), Theme.P(36));
+            btnBigScan.Location = new Point(Theme.P(162), Theme.P(11));
             btnBigScan.Click += delegate { StartBigScan(); };
             bar.Controls.Add(btnBigScan);
 
             btnBigPause = new FlatButton();
             btnBigPause.Kind = BtnKind.Secondary;
             Txt(btnBigPause, "big.pause");
-            btnBigPause.Size = new Size(Theme.P(100), Theme.P(38));
-            btnBigPause.Location = new Point(Theme.P(284), Theme.P(10));
+            btnBigPause.Size = new Size(Theme.P(96), Theme.P(36));
+            btnBigPause.Location = new Point(Theme.P(302), Theme.P(11));
             btnBigPause.Enabled = false;
             btnBigPause.Click += delegate { ToggleBigPause(); };
             bar.Controls.Add(btnBigPause);
 
-            cmbThreshold = new ComboBox();
-            cmbThreshold.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbThreshold.FlatStyle = FlatStyle.Flat;
-            cmbThreshold.Font = Theme.Base;
-            cmbThreshold.ItemHeight = Theme.P(22);
-            cmbThreshold.Size = new Size(Theme.P(130), Theme.P(30));
-            cmbThreshold.Location = new Point(Theme.P(392), Theme.P(14));
+            cmbThreshold = new FlatSelect();
+            cmbThreshold.Size = new Size(Theme.P(140), Theme.P(36));
+            cmbThreshold.Location = new Point(Theme.P(406), Theme.P(11));
             FillThresholds();   // 内部会填选项并选中默认项（200 MB）
             bar.Controls.Add(cmbThreshold);
 
@@ -994,7 +986,8 @@ namespace DiskMate
                  + " hint=" + (lblBigHint == null ? "" : lblBigHint.Text)
                  + " top=" + (lvBig.Items.Count > 0 ? lvBig.Items[0].SubItems[1].Text : "-")
                  + " | drive=" + cmbDrive.Bounds + " scan=" + btnBigScan.Bounds + " pause=" + btnBigPause.Bounds
-                 + " thr=" + cmbThreshold.Bounds + " hint=" + lblBigHint.Bounds + " list=" + lvBig.Bounds;
+                 + " thr=" + cmbThreshold.Bounds
+                 + " driveText=[" + cmbDrive.SelectedText + "] thrText=[" + cmbThreshold.SelectedText + "]" + " hint=" + lblBigHint.Bounds + " list=" + lvBig.Bounds;
         }
 
         /// <summary>调试用：暂停/继续</summary>
@@ -1020,17 +1013,13 @@ namespace DiskMate
         {
             if (cmbThreshold == null) return;
             int keep = cmbThreshold.SelectedIndex;
-            cmbThreshold.BeginUpdate();
-            try
+            cmbThreshold.SetItems(new[]
             {
-                cmbThreshold.Items.Clear();
-                cmbThreshold.Items.Add(I18n.T("big.th100"));
-                cmbThreshold.Items.Add(I18n.T("big.th200"));
-                cmbThreshold.Items.Add(I18n.T("big.th500"));
-                cmbThreshold.Items.Add(I18n.T("big.th1g"));
-            }
-            finally { cmbThreshold.EndUpdate(); }
-            cmbThreshold.SelectedIndex = keep >= 0 && keep < cmbThreshold.Items.Count ? keep : 1;
+                I18n.T("big.th100"),
+                I18n.T("big.th200"),
+                I18n.T("big.th500"),
+                I18n.T("big.th1g")
+            }, keep >= 0 ? keep : 1);
         }
 
         /// <summary>没选中行时「打开位置」不可点；没勾选时「删除选中」不可点</summary>
@@ -1060,30 +1049,24 @@ namespace DiskMate
             if (cmbDrive == null) return;
             int keep = cmbDrive.SelectedIndex;
             bigDrives.Clear();
-            cmbDrive.BeginUpdate();
-            try
+            var labels = new List<string>();
+            foreach (DriveInfo d in DriveInfo.GetDrives())
             {
-                cmbDrive.Items.Clear();
-                foreach (DriveInfo d in DriveInfo.GetDrives())
+                try
                 {
-                    try
-                    {
-                        if (d.DriveType != DriveType.Fixed || !d.IsReady) continue;
-                        bigDrives.Add(d);
-                        cmbDrive.Items.Add(d.Name.Substring(0, 2) + "  可用 " + Theme.Fmt(d.AvailableFreeSpace));
-                    }
-                    catch { }
+                    if (d.DriveType != DriveType.Fixed || !d.IsReady) continue;
+                    bigDrives.Add(d);
+                    labels.Add(d.Name.Substring(0, 2) + "  可用 " + Theme.Fmt(d.AvailableFreeSpace));
                 }
+                catch { }
             }
-            finally { cmbDrive.EndUpdate(); }
 
             int idx = 0;   // 默认目标就是 C 盘
             for (int i = 0; i < bigDrives.Count; i++)
             {
                 if (bigDrives[i].Name.StartsWith("C:", StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
             }
-            if (keep >= 0 && keep < cmbDrive.Items.Count) idx = keep;
-            if (cmbDrive.Items.Count > 0) cmbDrive.SelectedIndex = idx;
+            cmbDrive.SetItems(labels, keep >= 0 ? keep : idx);
         }
 
         /// <summary>整盘扫描时跳过这些目录：系统还原点/回收站/组件库，扫进去只有噪音</summary>
@@ -1150,8 +1133,43 @@ namespace DiskMate
         private void RevealBigFile()
         {
             if (lvBig.SelectedItems.Count == 0) return;
-            try { Process.Start("explorer.exe", "/select,\"" + lvBig.SelectedItems[0].SubItems[1].Text + "\""); }
+            string path = lvBig.SelectedItems[0].SubItems[1].Text;
+            if (ShellReveal(path)) return;
+            ShowBanner(BannerKind.Warn, I18n.T("big.revealFail"), 6);
+        }
+
+        /// <summary>
+        /// 在资源管理器里定位文件。文件还在就先 /select 选中它；
+        /// 文件已经被删掉（或 /select 被系统拒绝），就退一步打开它所在的目录。
+        /// </summary>
+        private bool ShellReveal(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+
+            try
+            {
+                if (File.Exists(path))
+                {
+                    var p = Process.Start("explorer.exe", "/select,\"" + path + "\"");
+                    if (p != null) return true;
+                }
+            }
             catch { }
+
+            try
+            {
+                string dir = Path.GetDirectoryName(path);
+                while (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    dir = Path.GetDirectoryName(dir);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    Process.Start("explorer.exe", "\"" + dir + "\"");
+                    return true;
+                }
+            }
+            catch { }
+
+            return false;
         }
 
         // ============================================================ log page

@@ -15,7 +15,7 @@ namespace DiskMate
         private TextBox txtFbDetail;
         private Label lblFbDetailHead, lblFbHint, lblFbEmpty;
         private FlatButton btnFbNew, btnFbRefresh;
-        private ComboBox cmbFbStatus;
+        private FlatSelect cmbFbStatus;
         private bool fbLoading;
         private static readonly string[] FbStatusKeys = { "all", "open", "processing", "resolved" };
 
@@ -44,13 +44,9 @@ namespace DiskMate
             btnFbRefresh.Click += delegate { RefreshFeedback(true); };
             bar.Controls.Add(btnFbRefresh);
 
-            cmbFbStatus = new ComboBox();
-            cmbFbStatus.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbFbStatus.FlatStyle = FlatStyle.Flat;
-            cmbFbStatus.Font = Theme.Base;
-            cmbFbStatus.ItemHeight = Theme.P(22);
-            cmbFbStatus.Size = new Size(Theme.P(132), Theme.P(30));
-            cmbFbStatus.Location = new Point(Theme.P(252), Theme.P(14));
+            cmbFbStatus = new FlatSelect();
+            cmbFbStatus.Size = new Size(Theme.P(140), Theme.P(36));
+            cmbFbStatus.Location = new Point(Theme.P(252), Theme.P(11));
             FillFbStatusOptions();
             cmbFbStatus.SelectedIndexChanged += delegate { RefreshFeedback(true); };
             bar.Controls.Add(cmbFbStatus);
@@ -169,12 +165,13 @@ namespace DiskMate
         private void FillFbStatusOptions()
         {
             int keep = cmbFbStatus.SelectedIndex;
-            cmbFbStatus.Items.Clear();
-            cmbFbStatus.Items.Add(I18n.T("fb.status.all"));
-            cmbFbStatus.Items.Add(I18n.T("fb.status.open"));
-            cmbFbStatus.Items.Add(I18n.T("fb.status.processing"));
-            cmbFbStatus.Items.Add(I18n.T("fb.status.resolved"));
-            cmbFbStatus.SelectedIndex = keep >= 0 && keep < cmbFbStatus.Items.Count ? keep : 0;
+            cmbFbStatus.SetItems(new[]
+            {
+                I18n.T("fb.status.all"),
+                I18n.T("fb.status.open"),
+                I18n.T("fb.status.processing"),
+                I18n.T("fb.status.resolved")
+            }, keep >= 0 ? keep : 0);
         }
 
         private void LayoutFeedbackPage()

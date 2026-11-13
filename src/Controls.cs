@@ -501,6 +501,142 @@ namespace DiskMate
         }
     }
 
+    // ============================================================ flat select
+    /// <summary>
+    /// 自绘下拉框：外观跟 FlatButton 一致（圆角白底 + 细描边 + 右侧箭头），
+    /// 点开是一个小菜单。原生 ComboBox 在圆角浅色界面里是方角白框，很突兀。
+    /// </summary>
+    internal class FlatSelect : Control
+    {
+        private readonly List<string> items = new List<string>();
+        private int selectedIndex = -1;
+        private bool hover, open;
+
+        public event EventHandler SelectedIndexChanged;
+
+        public FlatSelect()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
+            Font = Theme.Base;
+            Cursor = Cursors.Hand;
+            Size = new Size(Theme.P(132), Theme.P(36));
+            TabStop = true;
+        }
+
+        public int Count { get { return items.Count; } }
+
+        public int SelectedIndex
+        {
+            get { return selectedIndex; }
+            set
+            {
+                int v = items.Count == 0 ? -1 : Math.Max(0, Math.Min(value, items.Count - 1));
+                bool changed = v != selectedIndex;
+                selectedIndex = v;
+                Invalidate();
+                if (changed && SelectedIndexChanged != null) SelectedIndexChanged(this, EventArgs.Empty);
+            }
+        }
+
+        public string SelectedText
+        {
+            get { return selectedIndex >= 0 && selectedIndex < items.Count ? items[selectedIndex] : ""; }
+        }
+
+        /// <summary>重建选项：先按文本保住原来的选中项，保不住就用 fallbackIndex</summary>
+        public void SetItems(IList<string> values, int fallbackIndex)
+        {
+            string keep = SelectedText;
+            items.Clear();
+            if (values != null) foreach (string v in values) items.Add(v);
+
+            int idx = string.IsNullOrEmpty(keep) ? -1 : items.IndexOf(keep);
+            if (idx < 0 && items.Count > 0)
+                idx = Math.Min(Math.Max(fallbackIndex, 0), items.Count - 1);
+            selectedIndex = items.Count == 0 ? -1 : idx;
+            Invalidate();
+        }
+
+        protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (Enabled) ShowMenu();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Down) { SelectedIndex = selectedIndex + 1; e.Handled = true; }
+            else if (e.KeyCode == Keys.Up) { SelectedIndex = selectedIndex - 1; e.Handled = true; }
+            else if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space) { ShowMenu(); e.Handled = true; }
+        }
+
+        private void ShowMenu()
+        {
+            if (items.Count == 0) return;
+
+            var menu = new ContextMenuStrip();
+            menu.ShowImageMargin = false;
+            menu.Font = Theme.Base;
+            menu.BackColor = Color.White;
+            menu.MinimumSize = new Size(Math.Max(Width, Theme.P(140)), 0);
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                int idx = i;
+                var mi = new ToolStripMenuItem(items[i]);
+                mi.Checked = i == selectedIndex;
+                mi.CheckOnClick = false;
+                mi.Padding = new Padding(Theme.P(8), Theme.P(4), Theme.P(8), Theme.P(4));
+                mi.Click += delegate { SelectedIndex = idx; };
+                menu.Items.Add(mi);
+            }
+
+            open = true;
+            menu.Closed += delegate { open = false; Invalidate(); };
+            menu.Show(this, new Point(0, Height + Theme.P(2)));
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Parent != null ? Parent.BackColor : Theme.Bg);
+
+            Color border = !Enabled ? Theme.Border : (hover || open ? Theme.Primary : Theme.BorderStrong);
+            Color fg = Enabled ? Theme.Text : Theme.TextFaint;
+            var r = new Rectangle(0, 0, Width - 1, Height - 1);
+            Theme.FillRound(g, r, 9, Enabled ? Color.White : Color.FromArgb(247, 248, 251));
+            Theme.StrokeRound(g, r, 9, border);
+
+            int arrowRoom = Theme.P(26);
+            TextRenderer.DrawText(g, SelectedText, Font,
+                new Rectangle(Theme.P(12), 0, Math.Max(Theme.P(20), Width - arrowRoom - Theme.P(10)), Height),
+                fg, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+            using (var pen = new Pen(fg, 1.6f))
+            {
+                int cx = Width - Theme.P(16);
+                int cy = Height / 2;
+                int dx = Theme.P(4);
+                int dy = Theme.P(2);
+                g.DrawLines(pen, new[]
+                {
+                    new Point(cx - dx, cy - dy),
+                    new Point(cx, cy + dy),
+                    new Point(cx + dx, cy - dy)
+                });
+            }
+        }
+    }
+
     // ============================================================ search box
     internal class SearchBox : Panel
     {

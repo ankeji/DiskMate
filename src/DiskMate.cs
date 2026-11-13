@@ -763,18 +763,35 @@ namespace DiskMate
                 foreach (string sid in sids) ClearRecycleFolder(sid, log);
             }
 
+            // 文件已经自己删完了，Shell 这一步只做收尾。
+            // 它可能被第三方 shell 扩展（杀软/网盘/右键菜单工具）卡住，所以给它 3 秒上限，超时就不等了。
             foreach (string root in FixedDriveRoots())
             {
+                string driveRoot = root;
                 try
                 {
-                    if (log != null) log.AppendLine("    回收站 " + root + " 交给系统收尾");
-                    int hr = Native.SHEmptyRecycleBin(IntPtr.Zero, root,
-                        Native.SHERB_NOCONFIRMATION | Native.SHERB_NOPROGRESSUI | Native.SHERB_NOSOUND);
-                    if (hr != 0 && log != null) log.AppendLine("    回收站 " + root + " Shell 返回 0x" + hr.ToString("X8"));
+                    if (log != null) log.AppendLine("    回收站 " + driveRoot + " 交给系统收尾");
+                    Task shell = Task.Factory.StartNew(delegate
+                    {
+                        try
+                        {
+                            int hr = Native.SHEmptyRecycleBin(IntPtr.Zero, driveRoot,
+                                Native.SHERB_NOCONFIRMATION | Native.SHERB_NOPROGRESSUI | Native.SHERB_NOSOUND);
+                            if (hr != 0 && log != null)
+                                lock (log) log.AppendLine("    回收站 " + driveRoot + " Shell 返回 0x" + hr.ToString("X8"));
+                        }
+                        catch (Exception ex)
+                        {
+                            if (log != null) lock (log) log.AppendLine("    回收站 " + driveRoot + " Shell 失败：" + ex.Message);
+                        }
+                    });
+
+                    if (!shell.Wait(3000) && log != null)
+                        log.AppendLine("    回收站 " + driveRoot + " Shell 收尾超时（内容其实已经删掉了），不再等待");
                 }
                 catch (Exception ex)
                 {
-                    if (log != null) log.AppendLine("    回收站 " + root + " Shell 失败：" + ex.Message);
+                    if (log != null) log.AppendLine("    回收站 " + driveRoot + " Shell 失败：" + ex.Message);
                 }
             }
 

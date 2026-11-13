@@ -627,6 +627,7 @@ scan.done|扫描完成：发现 {0} 项可清理内容，合计 {1}
 scan.failed|扫描失败：{0}
 work.title|正在清理
 work.preparing|准备中…
+work.finishing|正在收尾…
 work.current|正在清理：{0}
 work.hint|清理过程不要关闭程序，结束后会显示释放了多少空间
 clean.title|确认清理这 {0} 项？
@@ -676,6 +677,7 @@ big.none|没有找到大于 {0} 的文件，换个更小的阈值试试。
 big.progress|正在扫描… 已检查 {0:N0} 个文件，命中 {1} 个
 big.done|检查了 {0:N0} 个文件，找到 {1} 个大于 {2} 的文件
 big.cancel|扫描已取消
+big.revealFail|文件已不存在，已打开它所在的文件夹
 big.pause|暂停
 big.resume|继续
 big.paused|已暂停 · 已检查 {0:N0} 个文件，命中 {1} 个
@@ -831,6 +833,7 @@ scan.done|掃描完成：發現 {0} 項可清理內容，合計 {1}
 scan.failed|掃描失敗：{0}
 work.title|正在清理
 work.preparing|準備中…
+work.finishing|正在收尾…
 work.current|正在清理：{0}
 work.hint|清理過程請勿關閉程式，結束後會顯示釋放多少空間
 clean.title|確認清理這 {0} 項？
@@ -880,6 +883,7 @@ big.none|沒有找到大於 {0} 的檔案，換個更小的閾值試試。
 big.progress|正在掃描… 已檢查 {0:N0} 個檔案，命中 {1} 個
 big.done|檢查了 {0:N0} 個檔案，找到 {1} 個大於 {2} 的檔案
 big.cancel|掃描已取消
+big.revealFail|檔案已不存在，已開啟它所在的資料夾
 big.pause|暫停
 big.resume|繼續
 big.paused|已暫停 · 已檢查 {0:N0} 個檔案，命中 {1} 個
@@ -1035,6 +1039,7 @@ scan.done|Scan complete: {0} items, {1} in total
 scan.failed|Scan failed: {0}
 work.title|Cleaning
 work.preparing|Preparing…
+work.finishing|Wrapping up…
 work.current|Cleaning: {0}
 work.hint|Keep this window open. You will see how much space was freed when it finishes.
 clean.title|Clean these {0} items?
@@ -1084,6 +1089,7 @@ big.none|No files larger than {0}. Try a lower threshold.
 big.progress|Scanning… {0:N0} files checked, {1} found
 big.done|Checked {0:N0} files, found {1} larger than {2}
 big.cancel|Scan cancelled
+big.revealFail|That file is gone - opened its folder instead
 big.pause|Pause
 big.resume|Resume
 big.paused|Paused - {0:N0} files checked, {1} found
