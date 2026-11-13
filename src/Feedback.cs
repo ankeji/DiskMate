@@ -143,8 +143,7 @@ namespace DiskMate
 
             txtTitle = MakeBox(false);
             txtTitle.MaxLength = FeedbackService.TitleMax;
-            txtTitle.SetBounds(Theme.P(28), Theme.P(114), w - Theme.P(56) - Theme.P(70), Theme.P(26));
-            Controls.Add(Border(txtTitle, new Rectangle(Theme.P(28), Theme.P(106), w - Theme.P(56), Theme.P(42))));
+            Controls.Add(Border(txtTitle, new Rectangle(Theme.P(28), Theme.P(106), w - Theme.P(56), Theme.P(42)), false));
 
             lblTitleCount = new Label();
             lblTitleCount.AutoSize = false;
@@ -166,8 +165,7 @@ namespace DiskMate
             txtContent = MakeBox(true);
             txtContent.MaxLength = FeedbackService.ContentMax;
             txtContent.ScrollBars = ScrollBars.Vertical;
-            txtContent.SetBounds(Theme.P(28) + Theme.P(2), Theme.P(186), w - Theme.P(56) - Theme.P(72), Theme.P(154));
-            Controls.Add(Border(txtContent, new Rectangle(Theme.P(28), Theme.P(184), w - Theme.P(56), Theme.P(180))));
+            Controls.Add(Border(txtContent, new Rectangle(Theme.P(28), Theme.P(184), w - Theme.P(56), Theme.P(180)), true));
 
             lblContentCount = new Label();
             lblContentCount.AutoSize = false;
@@ -204,7 +202,20 @@ namespace DiskMate
 
             txtTitle.TextChanged += delegate { UpdateCounts(); };
             txtContent.TextChanged += delegate { UpdateCounts(); };
+            txtTitle.KeyDown += delegate (object s, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; txtContent.Focus(); }
+            };
+            txtContent.KeyDown += delegate (object s, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Enter && e.Control) { e.SuppressKeyPress = true; Submit(); }
+            };
             UpdateCounts();
+
+            Shown += delegate
+            {
+                try { Activate(); txtTitle.Focus(); } catch { }
+            };
         }
 
         private static TextBox MakeBox(bool multiline)
@@ -219,12 +230,16 @@ namespace DiskMate
             return t;
         }
 
-        /// <summary>给无边框输入框套一个圆角描边底板</summary>
-        private static Panel Border(TextBox box, Rectangle bounds)
+        /// <summary>
+        /// 给无边框输入框套一个圆角描边底板。
+        /// 注意：输入框的坐标是相对底板（Panel）的，不能直接用弹窗坐标，否则会被裁到面板外、点不到也打不了字。
+        /// </summary>
+        private static Panel Border(TextBox box, Rectangle bounds, bool multiline)
         {
             var p = new Panel();
             p.BackColor = Color.White;
             p.SetBounds(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            p.Cursor = Cursors.IBeam;
             p.Paint += delegate (object s, PaintEventArgs e)
             {
                 var panel = (Panel)s;
@@ -232,6 +247,22 @@ namespace DiskMate
                 using (var path = Theme.Round(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 8))
                     e.Graphics.DrawPath(pen, path);
             };
+
+            int padX = Theme.P(10);
+            int innerW = Math.Max(Theme.P(40), p.Width - padX * 2);
+            if (multiline)
+            {
+                box.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+                box.SetBounds(padX, Theme.P(8), innerW, Math.Max(Theme.P(40), p.Height - Theme.P(16)));
+            }
+            else
+            {
+                box.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                box.SetBounds(padX, Theme.P(12), innerW, Theme.P(20));
+            }
+
+            // 点底板空白处也能聚焦到输入框
+            p.Click += delegate { box.Focus(); };
             p.Controls.Add(box);
             return p;
         }
@@ -303,8 +334,22 @@ namespace DiskMate
                     Application.DoEvents();
                     d.Refresh();
                     Application.DoEvents();
+                    // 模拟真人点击 + 键入：能进字符才算这个弹窗是能用的
+                    string beforeTitle = d.txtTitle.Text;
+                    string beforeContent = d.txtContent.Text;
+                    Native.SendMessage(d.txtContent.Handle, 0x0201, (IntPtr)1, (IntPtr)((8 << 16) | 20));
+                    Native.SendMessage(d.txtContent.Handle, 0x0202, IntPtr.Zero, IntPtr.Zero);
+                    Native.SendMessage(d.txtContent.Handle, 0x0102, (IntPtr)'X', IntPtr.Zero);   // WM_CHAR
+                    Application.DoEvents();
+                    Console.WriteLine("input: focused=" + d.txtContent.Focused
+                        + " grew=" + (d.txtContent.TextLength > beforeContent.Length));
+                    d.txtTitle.Text = beforeTitle;
+                    d.txtContent.Text = beforeContent;
+                    Application.DoEvents();
                     Console.WriteLine("dialog=" + d.Width + "x" + d.Height
-                        + " title=" + d.txtTitle.Bounds + " content=" + d.txtContent.Bounds
+                        + " titleBox=" + d.txtTitle.Parent.Bounds + " inner=" + d.txtTitle.Bounds
+                        + " contentBox=" + d.txtContent.Parent.Bounds + " inner=" + d.txtContent.Bounds
+                        + " canFocus=" + d.txtTitle.CanFocus + "/" + d.txtContent.CanFocus
                         + " submit=" + d.btnSubmit.Bounds);
                     using (var bmp = new Bitmap(d.Width, d.Height))
                     {
