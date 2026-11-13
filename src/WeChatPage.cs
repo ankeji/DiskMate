@@ -99,6 +99,9 @@ namespace DiskMate
             lvWc.Columns.Add(I18n.T("wechat.col.note"), Theme.P(400));
             lvWc.ItemCheck += delegate (object s, ItemCheckEventArgs e)
             {
+                // 聊天记录行不给勾选
+                string key = lvWc.Items[e.Index].Tag as string;
+                if (key == WeChatScanner.Db) e.NewValue = CheckState.Unchecked;
                 BeginInvoke((MethodInvoker)UpdateWcButtons);
             };
             card.Controls.Add(lvWc);
@@ -160,7 +163,8 @@ namespace DiskMate
                     it.SubItems.Add("0");
                     it.SubItems.Add(Theme.Fmt(0));
                     it.SubItems.Add(I18n.T("wechat.cat." + key + ".sub"));
-                    it.Checked = key != WeChatScanner.File;   // 文件（文档）默认不勾，避免误删重要资料
+                    // 文件（文档）和聊天记录默认不勾，避免误删重要资料
+                    it.Checked = key != WeChatScanner.File && key != WeChatScanner.Db;
                     lvWc.Items.Add(it);
                 }
             }

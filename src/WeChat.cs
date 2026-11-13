@@ -19,21 +19,19 @@ namespace DiskMate
 
             string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var cands = new List<string>
-            {
-                Path.Combine(docs, "WeChat Files"),
-                Path.Combine(docs, "xwechat_files"),
-                Path.Combine(profile, "Documents", "WeChat Files"),
-                Path.Combine(profile, "Documents", "xwechat_files"),
-                @"D:\WeChat Files",
-                @"E:\WeChat Files",
-                @"D:\xwechat_files",
-                @"E:\xwechat_files"
-            };
-            foreach (string c in cands)
-                if (LooksLike(c)) return c;
 
-            // 兜底：在文档目录里找一层名字带 wechat 的
+            var cands = new List<string>();
+
+            // 常见位置：4.x（xwechat_files）和 3.x（WeChat Files）都看
+            AddCandidate(cands, Path.Combine(docs, "xwechat_files"));
+            AddCandidate(cands, Path.Combine(docs, "WeChat Files"));
+            AddCandidate(cands, Path.Combine(profile, "Documents", "xwechat_files"));
+            AddCandidate(cands, Path.Combine(profile, "Documents", "WeChat Files"));
+
+            // 各盘根目录和下一层：D://weixin//xwechat_files 这种
+            foreach (string p in ScanDrives()) AddCandidate(cands, p);
+
+            // 文档目录下一层名字带 wechat 的
             try
             {
                 if (Directory.Exists(docs))
@@ -41,12 +39,78 @@ namespace DiskMate
                     foreach (string d in Directory.GetDirectories(docs))
                     {
                         string n = Path.GetFileName(d).ToLowerInvariant();
-                        if (n.Contains("wechat") && LooksLike(d)) return d;
+                        if (n.Contains("wechat")) AddCandidate(cands, d);
                     }
                 }
             }
             catch { }
-            return null;
+
+            if (cands.Count == 0) return null;
+            if (cands.Count == 1) return cands[0];
+
+            // 多个候选时挑最近还在写的那个（正在用的微信目录 mtime 最新）
+            string best = cands[0];
+            DateTime bestAt = SafeWriteTime(best);
+            foreach (string c in cands)
+            {
+                DateTime at = SafeWriteTime(c);
+                if (at > bestAt) { best = c; bestAt = at; }
+            }
+            return best;
+        }
+
+        private static void AddCandidate(List<string> cands, string p)
+        {
+            if (string.IsNullOrEmpty(p)) return;
+            foreach (string c in cands)
+                if (string.Equals(c, p, StringComparison.OrdinalIgnoreCase)) return;
+            if (LooksLike(p)) cands.Add(p);
+        }
+
+        private static DateTime SafeWriteTime(string dir)
+        {
+            try { return Directory.GetLastWriteTime(dir); }
+            catch { return DateTime.MinValue; }
+        }
+
+        private static readonly string[] WeChatDirNames = { "xwechat_files", "WeChat Files", "wechat_files" };
+
+        /// <summary>扫各固定盘的根目录和下一层，找名字像微信数据目录且结构对得上的</summary>
+        private static List<string> ScanDrives()
+        {
+            var hits = new List<string>();
+            DriveInfo[] drives;
+            try { drives = DriveInfo.GetDrives(); }
+            catch { return hits; }
+
+            foreach (DriveInfo dr in drives)
+            {
+                try
+                {
+                    if (dr.DriveType != DriveType.Fixed || !dr.IsReady) continue;
+                    string root = dr.RootDirectory.FullName;
+
+                    foreach (string name in WeChatDirNames)
+                    {
+                        string p = Path.Combine(root, name);
+                        if (LooksLike(p)) { hits.Add(p); break; }
+                    }
+
+                    // 下一层：D://weixin//xwechat_files 这种
+                    string[] subs;
+                    try { subs = Directory.GetDirectories(root); } catch { continue; }
+                    foreach (string sub in subs)
+                    {
+                        foreach (string name in WeChatDirNames)
+                        {
+                            string p = Path.Combine(sub, name);
+                            if (LooksLike(p)) { hits.Add(p); break; }
+                        }
+                    }
+                }
+                catch { }
+            }
+            return hits;
         }
 
         /// <summary>目录看起来像不像微信：有 FileStorage / db_storage / Msg，或者名字本身像</summary>
@@ -97,16 +161,23 @@ namespace DiskMate
         public const string Video = "video";
         public const string Audio = "audio";
         public const string File = "file";
+        public const string Cache = "cache";
+        public const string Db = "db";
 
-        public static readonly string[] Keys = { Image, Video, Audio, File };
+        public static readonly string[] Keys = { Image, Video, Audio, File, Cache, Db };
 
         private static readonly HashSet<string> ImageExt = MakeSet("jpg jpeg png gif bmp webp heic heif tif tiff ico");
         private static readonly HashSet<string> VideoExt = MakeSet("mp4 mov avi mkv wmv flv m4v 3gp rmvb ts webm mpg mpeg");
         private static readonly HashSet<string> AudioExt = MakeSet("mp3 wav amr silk aud m4a aac ogg flac opus wma ape");
         private static readonly HashSet<string> FileExt = MakeSet("doc docx xls xlsx ppt pptx pdf txt csv md zip rar 7z tar gz bz2 apk");
+        private static readonly HashSet<string> CacheExt = MakeSet("dat tmp thumb icon crc log cache");
 
-        /// <summary>整目录跳过：聊天记录、配置、备份</summary>
-        private static readonly HashSet<string> SkipDirs = MakeSet("db_storage msg config backup emoji");
+        /// <summary>
+        /// 整目录跳过：只跳真正的聊天数据和配置。
+        /// 注意别再跳 msg —— 微信 4.x 的图片/视频/文件全在 msg\attach、msg\video、msg\file 里，
+        /// 之前跳了 msg 导致 1.6 GB 内容一个都没统计到。
+        /// </summary>
+        private static readonly HashSet<string> SkipDirs = MakeSet("db_storage config backup");
 
         private static HashSet<string> MakeSet(string words)
         {
@@ -120,17 +191,46 @@ namespace DiskMate
             return new WeChatCategory { Key = key };
         }
 
-        /// <summary>按扩展名归类，不是目标类型返回 null</summary>
+        /// <summary>
+        /// 按扩展名 + 所在目录归类，不属于这五类返回 null。
+        /// 微信 4.x 会把聊天里的图片/视频加密成 .dat（.dat 就有一千多 MB），
+        /// 这类连同 tmp/thumb、无扩展名文件一起算进「缓存」，由用户自己决定清不清。
+        /// </summary>
         public static string Classify(string path)
         {
             string ext = Path.GetExtension(path);
-            if (string.IsNullOrEmpty(ext)) return null;
-            ext = ext.TrimStart('.').ToLowerInvariant();
-            if (ImageExt.Contains(ext)) return Image;
-            if (VideoExt.Contains(ext)) return Video;
-            if (AudioExt.Contains(ext)) return Audio;
-            if (FileExt.Contains(ext)) return File;
-            return null;
+            string e = string.IsNullOrEmpty(ext) ? "" : ext.TrimStart('.').ToLowerInvariant();
+
+            if (e.Length > 0)
+            {
+                if (ImageExt.Contains(e)) return Image;
+                if (VideoExt.Contains(e)) return Video;
+                if (AudioExt.Contains(e)) return Audio;
+                if (FileExt.Contains(e)) return File;
+                if (CacheExt.Contains(e)) return Cache;
+            }
+            else
+            {
+                return Cache;   // 无扩展名的基本是缓存块
+            }
+
+            // 其它不认识的扩展名：按所在目录兜底（微信自己会造出 .1 这类怪后缀）
+            if (InDir(path, "\\msg\\file\\")) return File;
+            if (InDir(path, "\\msg\\video\\")) return Video;
+            if (InDir(path, "\\msg\\attach\\")) return Cache;
+            return InCacheDir(path) ? Cache : null;
+        }
+
+        private static bool InDir(string path, string segment)
+        {
+            return path.ToLowerInvariant().Contains(segment);
+        }
+
+        private static bool InCacheDir(string path)
+        {
+            string p = path.ToLowerInvariant();
+            return p.Contains("\\cache\\") || p.Contains("\\temp\\")
+                || p.Contains("\\business\\") || p.Contains("\\finderlive\\");
         }
 
         /// <summary>
@@ -187,7 +287,26 @@ namespace DiskMate
                         {
                             var di = new DirectoryInfo(d);
                             if ((di.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                            if (SkipDirs.Contains(di.Name)) continue;
+
+                            string name = di.Name.ToLowerInvariant();
+                            if (name == "db_storage")
+                            {
+                                // 聊天数据库：只量体积给用户看，不进任何可清理列表
+                                long dbSize;
+                                int dbCount;
+                                MeasureDir(d, out dbSize, out dbCount);
+                                lock (target)
+                                {
+                                    WeChatCategory c;
+                                    if (target.TryGetValue(Db, out c))
+                                    {
+                                        c.Count += dbCount;
+                                        c.Size += dbSize;
+                                    }
+                                }
+                                continue;
+                            }
+                            if (SkipDirs.Contains(name)) continue;
                             stack.Push(d);
                         }
                         catch { }
@@ -197,6 +316,21 @@ namespace DiskMate
             }
 
             if (progress != null) progress(scanned);
+        }
+
+        private static void MeasureDir(string dir, out long size, out int count)
+        {
+            size = 0;
+            count = 0;
+            try
+            {
+                foreach (string f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+                {
+                    try { size += new FileInfo(f).Length; count++; }
+                    catch { }
+                }
+            }
+            catch { }
         }
 
         /// <summary>把一批文件移到回收站，返回真正释放的字节数</summary>
