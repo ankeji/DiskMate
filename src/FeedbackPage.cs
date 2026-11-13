@@ -87,6 +87,36 @@ namespace DiskMate
             lvFb.Columns.Add(I18n.T("fb.col.author"), Theme.P(150));
             lvFb.Columns.Add(I18n.T("fb.col.time"), Theme.P(160));
             lvFb.SelectedIndexChanged += delegate { UpdateFbDetail(); };
+
+            // 状态列自绘：待处理=红、处理中=橙、已解决=绿（圆点 + 同色文字）
+            lvFb.OwnerDraw = true;
+            lvFb.DrawColumnHeader += delegate (object s, DrawListViewColumnHeaderEventArgs e) { e.DrawDefault = true; };
+            lvFb.DrawSubItem += delegate (object s, DrawListViewSubItemEventArgs e)
+            {
+                string status = e.SubItem == null ? null : e.SubItem.Tag as string;
+                if (e.ColumnIndex != 0 || string.IsNullOrEmpty(status))
+                {
+                    e.DrawDefault = true;
+                    return;
+                }
+
+                Color c = FbStatusColor(status);
+                bool selected = (e.ItemState & ListViewItemStates.Selected) != 0;
+                Rectangle b = e.Bounds;
+
+                using (var bg = new SolidBrush(selected ? SystemColors.Highlight : lvFb.BackColor))
+                    e.Graphics.FillRectangle(bg, b);
+
+                int dot = Theme.P(7);
+                int dx = b.Left + Theme.P(8);
+                int dy = b.Top + (b.Height - dot) / 2;
+                using (var brush = new SolidBrush(c)) e.Graphics.FillEllipse(brush, dx, dy, dot, dot);
+
+                TextRenderer.DrawText(e.Graphics, e.SubItem.Text, Theme.Small,
+                    new Rectangle(dx + dot + Theme.P(6), b.Top, b.Width - dot - Theme.P(16), b.Height),
+                    selected ? SystemColors.HighlightText : c,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPadding);
+            };
             card.Controls.Add(lvFb);
 
             lblFbEmpty = new Label();
@@ -124,6 +154,16 @@ namespace DiskMate
 
             pageFeedback.Resize += delegate { LayoutFeedbackPage(); };
             LayoutFeedbackPage();
+        }
+
+        private static Color FbStatusColor(string status)
+        {
+            switch (status)
+            {
+                case "processing": return Theme.Mid;
+                case "resolved": return Theme.Low;
+                default: return Theme.High;
+            }
         }
 
         private void FillFbStatusOptions()
@@ -205,6 +245,7 @@ namespace DiskMate
             foreach (FeedbackItem f in list)
             {
                 var it = new ListViewItem(FeedbackService.StatusName(f.Status));
+                it.SubItems[0].Tag = f.Status;   // 自绘状态列时取色
                 it.SubItems.Add(f.Title);
                 it.SubItems.Add(f.Mine ? f.Author + " · " + I18n.T("fb.mine") : f.Author);
                 it.SubItems.Add(f.CreatedAt);
@@ -253,9 +294,10 @@ namespace DiskMate
             txtFbDetail.SelectionLength = 0;
         }
 
-        /// <summary>写反馈：提交成功后刷新列表并选中新条目。</summary>
+        /// <summary>写反馈：后台可配置是否要求登录；提交成功后刷新列表并选中新条目。</summary>
         private void NewFeedback()
         {
+            if (!RequireLogin(FeatureGate.Feedback)) return;
             if (FeedbackDialog.Show(this))
             {
                 ShowBanner(BannerKind.Success, I18n.T("fb.submitted"), 5);
@@ -267,6 +309,13 @@ namespace DiskMate
         public void TestShowFeedback()
         {
             ShowPage(4);
+            Application.DoEvents();
+        }
+
+        /// <summary>调试用：弹一条提示，用于验证悬浮条不会挤压页面</summary>
+        public void TestShowBanner()
+        {
+            ShowBanner(BannerKind.Success, "提示条是悬浮的，不会把页面往下挤", 9);
             Application.DoEvents();
         }
 

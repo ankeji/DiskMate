@@ -16,11 +16,12 @@ namespace DiskMate
         public const string Clean = "clean";
         public const string WeChat = "wechat";
         public const string Big = "big";
+        public const string Feedback = "feedback";
 
         private static readonly object Gate = new object();
         private static readonly Dictionary<string, bool> Flags = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
         {
-            { Clean, true }, { WeChat, true }, { Big, true }
+            { Clean, true }, { WeChat, true }, { Big, true }, { Feedback, true }
         };
 
         /// <summary>上次从服务端拉到配置的时间，用于判断缓存是否还能用（7 天内都认）</summary>

@@ -327,6 +327,7 @@ namespace DiskMate
             try { Native.AttachConsole(-1); } catch { }
             try
             {
+                Announcement.Suppressed = true;   // 截图时不要弹公告，模态窗会挡住渲染
                 using (var form = new MainForm())
                 {
                     form.Show();
@@ -339,7 +340,9 @@ namespace DiskMate
                     }
                     form.Refresh();
                     Application.DoEvents();
-                    Console.Write(form.DescribeFeedbackLayout());
+                    Console.Write("--- 无提示条 ---\n" + form.DescribeFeedbackLayout());
+                    form.TestShowBanner();
+                    Console.Write("--- 有提示条 ---\n" + form.DescribeFeedbackLayout());
                     using (var bmp = new Bitmap(form.Width, form.Height))
                     {
                         form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
@@ -405,6 +408,7 @@ namespace DiskMate
                 sb.AppendLine("clean    requireLogin = " + FeatureGate.LoginRequired(FeatureGate.Clean));
                 sb.AppendLine("wechat   requireLogin = " + FeatureGate.LoginRequired(FeatureGate.WeChat));
                 sb.AppendLine("big      requireLogin = " + FeatureGate.LoginRequired(FeatureGate.Big));
+                sb.AppendLine("feedback requireLogin = " + FeatureGate.LoginRequired(FeatureGate.Feedback));
 
                 string cache = FeatureGate.CacheFile;
                 sb.AppendLine("cache    = " + (string.IsNullOrEmpty(cache) ? "未生成" : "已写入 " + cache));

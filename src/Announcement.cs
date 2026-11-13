@@ -14,6 +14,9 @@ namespace DiskMate
     /// </summary>
     internal class Announcement
     {
+        /// <summary>开发/截图工具里关掉弹窗，避免模态窗口挡住自动化流程</summary>
+        public static bool Suppressed;
+
         public int Id;
         public string Title = "";
         public string Body = "";

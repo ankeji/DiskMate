@@ -318,17 +318,17 @@ namespace DiskMate
             Txt(lblLastScan, "lastScan.none");
             rightBox.Controls.Add(lblLastScan);
 
+            // 提示条做成悬浮层：盖在内容上方，不参与布局，出现/消失不会把页面挤来挤去
             bannerHost = new Panel();
-            bannerHost.Height = Theme.P(0);
             bannerHost.Visible = false;
             bannerHost.BackColor = Theme.Bg;
-            bannerHost.Padding = new Padding(Theme.P(24), Theme.P(0), Theme.P(24), Theme.P(12));
+            bannerHost.Padding = new Padding(Theme.P(0));
             mainHost.Controls.Add(bannerHost);
 
             banner = new Banner();
             banner.Dock = DockStyle.Fill;
             banner.Height = Theme.P(48);
-            banner.Dismissed += delegate { bannerHost.Visible = false; LayoutMain(); };
+            banner.Dismissed += delegate { bannerHost.Visible = false; };
             bannerHost.Controls.Add(banner);
 
             content = new Panel();
@@ -361,8 +361,14 @@ namespace DiskMate
                 lblPageSub.Width = subW;
                 lblPageTitle.Width = subW;
             }
-            int bh = bannerHost.Visible ? Theme.P(60) : 0;
-            bannerHost.SetBounds(Theme.P(0), y, w, bh); y += bh;
+            int bh = Theme.P(52);
+            if (bannerHost != null)
+            {
+                // 悬浮在顶栏下方一点的位置，宽度留出左右边距；不占用 content 的高度
+                bannerHost.SetBounds(Theme.P(24), Theme.P(14),
+                    Math.Max(Theme.P(240), w - Theme.P(48)), bh);
+                if (bannerHost.Visible) bannerHost.BringToFront();
+            }
             content.SetBounds(Theme.P(0), y, w, Math.Max(Theme.P(0), h - y));
         }
 
@@ -727,6 +733,7 @@ namespace DiskMate
         /// <summary>启动后拉一次公告；id 和更新时间都没变就不再打扰</summary>
         private void StartAnnouncementCheck()
         {
+            if (Announcement.Suppressed) return;
             Task.Factory.StartNew(delegate
             {
                 try { System.Threading.Thread.Sleep(1800); }
@@ -833,7 +840,8 @@ namespace DiskMate
         {
             banner.Show(kind, text, seconds);
             bannerHost.Visible = true;
-            LayoutMain();
+            LayoutMain();          // 只是重新定位悬浮条，不改变页面布局
+            bannerHost.BringToFront();
         }
 
         // ============================================================ ui thread helpers

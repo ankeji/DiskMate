@@ -110,7 +110,7 @@ namespace DiskMate
         private FeedbackDialog()
         {
             int w = Theme.P(560);
-            int h = Theme.P(486);
+            int h = Theme.P(506);
             ClientSize = new Size(w, h);
             Text = I18n.T("fbd.title");
 
@@ -143,7 +143,7 @@ namespace DiskMate
 
             txtTitle = MakeBox(false);
             txtTitle.MaxLength = FeedbackService.TitleMax;
-            Controls.Add(Border(txtTitle, new Rectangle(Theme.P(28), Theme.P(106), w - Theme.P(56), Theme.P(42)), false));
+            Controls.Add(Border(txtTitle, new Rectangle(Theme.P(28), Theme.P(118), w - Theme.P(56), Theme.P(42)), false));
 
             lblTitleCount = new Label();
             lblTitleCount.AutoSize = false;
@@ -155,7 +155,7 @@ namespace DiskMate
 
             var lblC = new Label();
             lblC.AutoSize = false;
-            lblC.Location = new Point(Theme.P(28), Theme.P(162));
+            lblC.Location = new Point(Theme.P(28), Theme.P(170));
             lblC.Size = new Size(Theme.P(200), Theme.P(20));
             lblC.Font = Theme.Small;
             lblC.ForeColor = Theme.TextSub;
@@ -165,21 +165,21 @@ namespace DiskMate
             txtContent = MakeBox(true);
             txtContent.MaxLength = FeedbackService.ContentMax;
             txtContent.ScrollBars = ScrollBars.Vertical;
-            Controls.Add(Border(txtContent, new Rectangle(Theme.P(28), Theme.P(184), w - Theme.P(56), Theme.P(180)), true));
+            Controls.Add(Border(txtContent, new Rectangle(Theme.P(28), Theme.P(194), w - Theme.P(56), Theme.P(180)), true));
 
             lblContentCount = new Label();
             lblContentCount.AutoSize = false;
             lblContentCount.TextAlign = ContentAlignment.MiddleRight;
             lblContentCount.Font = Theme.Small;
             lblContentCount.ForeColor = Theme.TextFaint;
-            lblContentCount.SetBounds(w - Theme.P(28) - Theme.P(96), Theme.P(162), Theme.P(96), Theme.P(20));
+            lblContentCount.SetBounds(w - Theme.P(28) - Theme.P(96), Theme.P(170), Theme.P(96), Theme.P(20));
             Controls.Add(lblContentCount);
 
             lblError = new Label();
             lblError.AutoSize = false;
             lblError.Font = Theme.Small;
             lblError.ForeColor = Theme.High;
-            lblError.Location = new Point(Theme.P(28), Theme.P(372));
+            lblError.Location = new Point(Theme.P(28), Theme.P(382));
             lblError.Size = new Size(w - Theme.P(220), Theme.P(36));
             lblError.Text = "";
             Controls.Add(lblError);
@@ -188,7 +188,7 @@ namespace DiskMate
             btnCancel.Kind = BtnKind.Secondary;
             btnCancel.Text = I18n.T("fbd.cancel");
             btnCancel.Size = new Size(Theme.P(96), Theme.P(38));
-            btnCancel.Location = new Point(w - Theme.P(28) - Theme.P(96) - Theme.P(12) - Theme.P(112), Theme.P(414));
+            btnCancel.Location = new Point(w - Theme.P(28) - Theme.P(96) - Theme.P(12) - Theme.P(112), Theme.P(424));
             btnCancel.Click += delegate { Close(); };
             Controls.Add(btnCancel);
 
@@ -196,7 +196,7 @@ namespace DiskMate
             btnSubmit.Kind = BtnKind.Primary;
             btnSubmit.Text = I18n.T("fbd.submit");
             btnSubmit.Size = new Size(Theme.P(112), Theme.P(38));
-            btnSubmit.Location = new Point(w - Theme.P(28) - Theme.P(112), Theme.P(414));
+            btnSubmit.Location = new Point(w - Theme.P(28) - Theme.P(112), Theme.P(424));
             btnSubmit.Click += delegate { Submit(); };
             Controls.Add(btnSubmit);
 
