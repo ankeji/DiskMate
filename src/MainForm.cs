@@ -68,7 +68,7 @@ namespace DiskMate
 
         // ---- big files
         private ListView lvBig;
-        private FlatButton btnBigScan, btnBigReveal, btnBigDelete, btnBigPause;
+        private FlatButton btnBigScan, btnBigDelete, btnBigPause;
         private Label lblBigHint;
         private Label lblBigEmpty;
         private FlatSelect cmbThreshold, cmbDrive;

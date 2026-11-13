@@ -654,20 +654,10 @@ namespace DiskMate
             btnBigDelete.Click += delegate { DeleteBigSelected(); };
             bar.Controls.Add(btnBigDelete);
 
-            btnBigReveal = new FlatButton();
-            btnBigReveal.Kind = BtnKind.Secondary;
-            Txt(btnBigReveal, "big.open");
-            btnBigReveal.Icon = "folder";
-            btnBigReveal.Enabled = false;
-            btnBigReveal.Size = new Size(Theme.P(120), Theme.P(36));
-            btnBigReveal.Location = new Point(Theme.P(840), Theme.P(11));
-            btnBigReveal.Click += delegate { RevealBigFile(); };
-            bar.Controls.Add(btnBigReveal);
-
             bar.Resize += delegate
             {
-                btnBigReveal.Location = new Point(bar.Width - btnBigReveal.Width, Theme.P(12));
-                btnBigDelete.Location = new Point(btnBigReveal.Left - Theme.P(8) - btnBigDelete.Width, Theme.P(12));
+                // 「删除选中」贴右边，进度行占满整行
+                btnBigDelete.Location = new Point(bar.Width - btnBigDelete.Width, Theme.P(11));
                 lblBigHint.Width = Math.Max(Theme.P(160), bar.Width - Theme.P(8) - lblBigHint.Left);
             };
 
@@ -1022,24 +1012,15 @@ namespace DiskMate
             }, keep >= 0 ? keep : 1);
         }
 
-        /// <summary>没选中行时「打开位置」不可点；没勾选时「删除选中」不可点</summary>
+        /// <summary>没勾选任何文件时「删除选中」不可点</summary>
         private void UpdateBigButtons()
         {
-            if (btnBigReveal == null) return;
-            bool has = lvBig != null && lvBig.SelectedItems.Count > 0;
-            if (btnBigReveal.Enabled != has)
+            if (btnBigDelete == null) return;
+            bool del = lvBig != null && lvBig.CheckedItems.Count > 0;
+            if (btnBigDelete.Enabled != del)
             {
-                btnBigReveal.Enabled = has;
-                btnBigReveal.Invalidate();
-            }
-            if (btnBigDelete != null)
-            {
-                bool del = lvBig != null && lvBig.CheckedItems.Count > 0;
-                if (btnBigDelete.Enabled != del)
-                {
-                    btnBigDelete.Enabled = del;
-                    btnBigDelete.Invalidate();
-                }
+                btnBigDelete.Enabled = del;
+                btnBigDelete.Invalidate();
             }
         }
 
