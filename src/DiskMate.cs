@@ -807,6 +807,14 @@ namespace DiskMate
             foreach (string f in files)
             {
                 if (string.IsNullOrEmpty(f)) continue;
+                // 只读文件（微信的缓存全是 0444）直接删会被 shell 拒绝，先去掉只读位
+                try
+                {
+                    FileAttributes attr = File.GetAttributes(f);
+                    if ((attr & FileAttributes.ReadOnly) != 0)
+                        File.SetAttributes(f, attr & ~FileAttributes.ReadOnly);
+                }
+                catch { }
                 sb.Append(f).Append('\0');
             }
             sb.Append('\0');

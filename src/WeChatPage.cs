@@ -381,18 +381,25 @@ namespace DiskMate
             Task.Factory.StartNew(delegate
             {
                 long freed = 0;
+                int failed = 0;
+                var log = new StringBuilder();
                 try
                 {
-                    var log = new StringBuilder();
-                    freed = WeChatScanner.RecycleToBin(files, log);
+                    freed = WeChatScanner.RecycleToBin(files, log, out failed);
                 }
                 catch { }
 
                 Ui(delegate
                 {
                     wcBusy = false;
-                    ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 8);
-                    Log("微信专清：清理 " + files.Count + " 个文件，释放 " + Theme.Fmt(freed));
+                    if (failed > 0)
+                        ShowBanner(BannerKind.Warn, I18n.F("wechat.partial", failed, Theme.Fmt(freed)), 10);
+                    else
+                        ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 8);
+
+                    Log("微信专清：清理 " + (files.Count - failed) + "/" + files.Count + " 个文件，释放 " + Theme.Fmt(freed) +
+                        (failed > 0 ? "，失败 " + failed + " 个" : ""));
+                    if (log.Length > 0) Log(log.ToString().TrimEnd());
                     Session.PingActivity("wechat");
                     StartWeChatScan();     // 清完自动重扫，列表立刻反映真实剩余
                 });
@@ -469,7 +476,8 @@ namespace DiskMate
         {
             WeChatCategory c;
             if (!wcCats.TryGetValue(key, out c)) return 0;
-            return WeChatScanner.RecycleToBin(new List<string>(c.Files), null);
+            int failed;
+            return WeChatScanner.RecycleToBin(new List<string>(c.Files), null, out failed);
         }
     }
 }

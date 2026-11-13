@@ -333,10 +333,11 @@ namespace DiskMate
             catch { }
         }
 
-        /// <summary>把一批文件移到回收站，返回真正释放的字节数</summary>
-        public static long RecycleToBin(List<string> files, System.Text.StringBuilder log)
+        /// <summary>把一批文件移到回收站，返回真正释放的字节数；failed 返回没删掉的数量</summary>
+        public static long RecycleToBin(List<string> files, System.Text.StringBuilder log, out int failed)
         {
             long freed = 0;
+            failed = 0;
             if (files == null || files.Count == 0) return 0;
 
             const int batch = 100;
@@ -354,7 +355,11 @@ namespace DiskMate
 
                 for (int j = 0; j < n; j++)
                 {
-                    try { if (!System.IO.File.Exists(part[j])) freed += sizes[j]; }
+                    try
+                    {
+                        if (!System.IO.File.Exists(part[j])) freed += sizes[j];
+                        else failed++;
+                    }
                     catch { }
                 }
             }

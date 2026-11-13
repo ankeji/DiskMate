@@ -22,6 +22,7 @@ namespace DiskMate
             bool wechatProbe = false;
             string wechatProbeRoot = null;
             string wcCleanKey = null;
+            string recycleTest = null;
             string authTest = null;
             string accountTest = null;
             string announceTest = null;
@@ -57,6 +58,7 @@ namespace DiskMate
                 else if (a.StartsWith("--wechatprobe=", StringComparison.OrdinalIgnoreCase)) { wechatProbe = true; wechatProbeRoot = a.Substring("--wechatprobe=".Length); }
                 else if (string.Equals(a, "--wechatprobe", StringComparison.OrdinalIgnoreCase)) wechatProbe = true;
                 else if (a.StartsWith("--wcclean=", StringComparison.OrdinalIgnoreCase)) wcCleanKey = a.Substring("--wcclean=".Length);
+                else if (a.StartsWith("--recycletest=", StringComparison.OrdinalIgnoreCase)) recycleTest = a.Substring("--recycletest=".Length);
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
@@ -227,6 +229,13 @@ namespace DiskMate
                 Console.WriteLine("contact dialog rendered: " + ct[0] + "  lang=" + I18n.Lang);
                 return;
             }
+            if (recycleTest != null)
+            {
+                UpdateService.Disabled = true;
+                RunRecycleTest(recycleTest);
+                return;
+            }
+
             if (wechatProbe)
             {
                 UpdateService.Disabled = true;
@@ -329,6 +338,41 @@ namespace DiskMate
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
         /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        /// <summary>调试用：验证指定目录所在的盘能不能把文件移进回收站（--recycletest=D://dir）</summary>
+        private static void RunRecycleTest(string dir)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            try
+            {
+                string f;
+                if (File.Exists(dir))
+                {
+                    f = dir;   // 传的是文件：直接拿它试
+                }
+                else
+                {
+                    Directory.CreateDirectory(dir);
+                    f = Path.Combine(dir, "dm-recycle-test.bin");
+                    File.WriteAllBytes(f, new byte[1024 * 1024]);
+                    File.SetAttributes(f, FileAttributes.ReadOnly);   // 模拟微信缓存：只读属性
+                }
+                var log = new StringBuilder();
+                int before = 0;
+                long sizeBefore = new FileInfo(f).Length;
+                int gone = Engine.RecycleFiles(new List<string> { f }, log);
+                Console.WriteLine("file     : " + f);
+                Console.WriteLine("size     : " + sizeBefore);
+                Console.WriteLine("gone     : " + gone + " / 1");
+                Console.WriteLine("exists   : " + File.Exists(f));
+                Console.WriteLine("log      : " + (log.Length == 0 ? "(空)" : log.ToString().Trim()));
+                Console.WriteLine("盘符     : " + Path.GetPathRoot(f) + "  回收站目录存在=" + Directory.Exists(Path.Combine(Path.GetPathRoot(f), "$Recycle.Bin")));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("recycletest failed: " + ex.Message);
+            }
+        }
+
         /// <summary>调试用：渲染微信专清页（--wechatpage=out.png）</summary>
         private static void RenderWeChatPage(string path)
         {
