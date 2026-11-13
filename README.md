@@ -246,7 +246,7 @@ api.base=http://192.168.1.10:8099
 
 ```
 DiskMate.exe --buildinfo
-version=1.0.4
+version=1.1.0
 channel=prod
 api=https://c.softinstall.top
 ```
@@ -414,7 +414,20 @@ case "mycache":
 - 应用内更新是整包替换：exe 只有约 300 KB，没做增量差分；放在无写权限目录、或用户拒绝 UAC 时替换会失败并留下 `*.failed` 记录
 - 更新只覆盖 exe 本体，`settings.ini` / 日志 / 用户数据都保留
 
-## 十四、赞助
+## 十四、更新日志
+
+### v1.1.0（2026-11-13）
+
+- **新增「微信专清」**：选一次微信数据目录（自动检测 `文档\WeChat Files` / `xwechat_files`），按 **图片 / 视频 / 音频 / 文件 / 缓存** 五类边扫边统计大小，勾选后清理；「聊天记录」只统计不清理，`db_storage` / `config` 不参与
+- 微信缓存是只读文件，删前先清只读属性；回收站删不掉可改用管理员权限强制删除；仍失败会检测 `Weixin.exe` / `WeChatAppEx.exe` 占用，提示关闭微信后自动重试
+- 修复扫描漏掉 `msg` 目录导致 2.2G 只统计出 66M，自动检测改为按最近使用时间选目录
+- 大文件扫描边扫边出结果、支持暂停 / 继续；盘符与阈值改成自绘下拉
+- 问题反馈升级为数据库版（列表 + 提交 + 处理状态），默认需登录、每人每天最多 5 条
+- 提示信息改为顶部悬浮条；修复反馈弹窗输入框被裁切、清完回收站仍显示「正在清理」等问题
+
+完整说明见 [docs/release-notes-v1.1.0.md](docs/release-notes-v1.1.0.md)，历史版本见 [Releases](https://github.com/ankeji/DiskMate/releases)。
+
+## 十五、赞助
 
 DiskMate 是个人项目：免费、无广告、无捆绑、不收集任何数据。如果它帮你腾出了几十 G，可以请作者喝杯咖啡。
 

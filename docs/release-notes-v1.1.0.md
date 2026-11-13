@@ -1,0 +1,35 @@
+## DiskMate v1.1.0
+
+### 中文
+
+这次最值得说的是新增了「微信专清」：微信里最占地方的图片、视频、文件，现在能分类看清大小，再按需清理。
+
+1. 新增「微信专清」：首次使用先选微信数据目录（自动检测 `文档\WeChat Files`、`xwechat_files`，选一次就记住）
+2. 按 **图片 / 视频 / 音频 / 文件 / 缓存** 五类统计大小与数量，边扫边更新；微信 4.x 的 `.dat` 加密图片视频算进「缓存」，那通常是最大的一块
+3. 「聊天记录」只统计、不参与清理；`db_storage`、`config` 这些目录不会被碰
+4. 勾选类别后点「清理选中」，默认走回收站，可还原；失败数量会在提示条里说明
+5. 微信缓存是只读文件，删除前会先清掉只读属性，避免静默失败
+6. 回收站删不掉时可改用管理员权限强制删除（清只读 / 隐藏 / 系统属性 + 取得所有权，不进回收站、不可恢复）
+7. 仍然失败会检查是不是微信进程占着（`Weixin.exe` / `WeChatAppEx.exe`），提示「关闭微信并重试」，一键结束进程后自动重试
+8. 修复扫描漏掉 `msg` 目录导致 2.2G 数据只统计出 66M 的问题；自动检测改为按最近使用时间挑目录
+9. 大文件扫描改为边扫边出结果，支持暂停 / 继续；盘符与大小阈值改成自绘下拉，默认 C 盘
+10. 问题反馈升级为数据库版：所有人可见的反馈列表、提交反馈、处理状态用颜色区分；默认需要登录（后台可关），每人每天最多 5 条
+11. 提示信息统一改成顶部悬浮条，不再挤压页面布局
+12. 修复问题反馈弹窗输入框被裁切导致无法输入、清理回收站后仍显示「正在清理」、扫描结果打不开所在目录等问题
+
+### English
+
+The headline of this release is the new WeChat Cleanup page: the images, videos and files that eat up your WeChat folder are now listed by category with their sizes, so you can clear only what you choose.
+
+1. New WeChat Cleanup: pick the WeChat data folder once (`Documents\WeChat Files`, `xwechat_files` are detected automatically) and it is remembered
+2. Sizes and counts are reported for images / videos / audio / files / cache, updating while scanning; WeChat 4.x encrypted `.dat` media is counted as cache, usually the biggest chunk
+3. Chat history is measured but never touched; `db_storage` and `config` are excluded from cleanup
+4. Tick the categories you want and clean them; deletions go to the Recycle Bin by default and the number of failures is reported
+5. WeChat cache files are read-only, so the read-only flag is cleared first to avoid silent failures
+6. If the Recycle Bin refuses, you can retry with administrator rights (clears read-only/hidden/system flags, takes ownership, deletes permanently)
+7. If it still fails, the app checks whether WeChat itself (`Weixin.exe` / `WeChatAppEx.exe`) is holding the files, offers to close it and retries automatically
+8. Fixed the scan skipping the `msg` folder, which made a 2.2 GB folder report only 66 MB; auto-detection now picks the most recently used folder
+9. Large-file scanning now streams results while scanning and can be paused/resumed; drive and size threshold use custom dropdowns, C: by default
+10. Feedback is now database-backed: a shared list, submission, and colour-coded handling status; sign-in is required by default (can be disabled server-side), max 5 posts per user per day
+11. All notices now appear as a floating bar at the top instead of pushing the layout around
+12. Fixed the feedback dialog where the text boxes were clipped and unusable, the "cleaning" state that never cleared after emptying the Recycle Bin, and scan results not opening their folder
