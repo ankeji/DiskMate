@@ -389,21 +389,60 @@ namespace DiskMate
                 }
                 catch { }
 
+                if (failed <= 0)
+                {
+                    Ui(delegate { FinishWcClean(freed, 0, log); });
+                    return;
+                }
+
+                // 回收站删不掉（只读、被占用、Shell 静默失败）→ 问用户要不要直接强删
+                var left = new List<string>();
+                foreach (string f in files)
+                {
+                    try { if (File.Exists(f)) left.Add(f); }
+                    catch { }
+                }
+
                 Ui(delegate
                 {
-                    wcBusy = false;
-                    if (failed > 0)
-                        ShowBanner(BannerKind.Warn, I18n.F("wechat.partial", failed, Theme.Fmt(freed)), 10);
-                    else
-                        ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 8);
+                    if (left.Count == 0) { FinishWcClean(freed, 0, log); return; }
 
-                    Log("微信专清：清理 " + (files.Count - failed) + "/" + files.Count + " 个文件，释放 " + Theme.Fmt(freed) +
-                        (failed > 0 ? "，失败 " + failed + " 个" : ""));
-                    if (log.Length > 0) Log(log.ToString().TrimEnd());
-                    Session.PingActivity("wechat");
-                    StartWeChatScan();     // 清完自动重扫，列表立刻反映真实剩余
+                    bool force = MessageDialog.Ask(this, I18n.T("wechat.forceTitle"),
+                        I18n.F("wechat.forceAsk", left.Count, Theme.Fmt(WeChatScanner.TotalSize(left))),
+                        I18n.T("wechat.forceOk"), true);
+
+                    if (!force) { FinishWcClean(freed, left.Count, log); return; }
+
+                    lblWcHint.Text = I18n.T("wechat.forcing");
+
+                    Task.Factory.StartNew(delegate
+                    {
+                        int still = 0;
+                        long more = 0;
+                        try { more = Engine.ForceDeleteFiles(left, log, out still); }
+                        catch { }
+
+                        Ui(delegate { FinishWcClean(freed + more, still, log); });
+                    }, TaskCreationOptions.LongRunning);
                 });
             }, TaskCreationOptions.LongRunning);
+        }
+
+        /// <summary>清理收尾：提示 + 日志 + 自动重扫（failed 是最后仍然没删掉的数量）</summary>
+        private void FinishWcClean(long freed, int failed, StringBuilder log)
+        {
+            wcBusy = false;
+
+            if (failed > 0)
+                ShowBanner(BannerKind.Warn, I18n.F("wechat.partial", failed, Theme.Fmt(freed)), 10);
+            else
+                ShowBanner(BannerKind.Success, I18n.F("wechat.done", Theme.Fmt(freed)), 8);
+
+            Log("微信专清：释放 " + Theme.Fmt(freed) + (failed > 0 ? "，仍有 " + failed + " 个文件没删掉" : ""));
+            if (log != null && log.Length > 0) Log(log.ToString().TrimEnd());
+
+            Session.PingActivity("wechat");
+            StartWeChatScan();     // 清完自动重扫，列表立刻反映真实剩余
         }
 
         // ------------------------------------------------------------ 调试/自检
@@ -476,8 +515,30 @@ namespace DiskMate
         {
             WeChatCategory c;
             if (!wcCats.TryGetValue(key, out c)) return 0;
+
+            var files = new List<string>(c.Files);
+            var log = new StringBuilder();
+
             int failed;
-            return WeChatScanner.RecycleToBin(new List<string>(c.Files), null, out failed);
+            long freed = WeChatScanner.RecycleToBin(files, log, out failed);
+            Console.WriteLine("  recycle: freed=" + Theme.Fmt(freed) + " failed=" + failed);
+
+            if (failed > 0)
+            {
+                var left = new List<string>();
+                foreach (string f in files)
+                {
+                    try { if (File.Exists(f)) left.Add(f); }
+                    catch { }
+                }
+                int still;
+                long more = Engine.ForceDeleteFiles(left, log, out still);
+                Console.WriteLine("  force  : freed=" + Theme.Fmt(more) + " failed=" + still);
+                freed += more;
+            }
+
+            if (log.Length > 0) Console.WriteLine(log.ToString().TrimEnd());
+            return freed;
         }
     }
 }

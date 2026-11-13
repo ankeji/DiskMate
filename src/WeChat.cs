@@ -333,6 +333,19 @@ namespace DiskMate
             catch { }
         }
 
+        /// <summary>这批文件加起来多大（提示文案用）</summary>
+        public static long TotalSize(List<string> files)
+        {
+            long n = 0;
+            if (files == null) return 0;
+            foreach (string f in files)
+            {
+                try { n += new FileInfo(f).Length; }
+                catch { }
+            }
+            return n;
+        }
+
         /// <summary>把一批文件移到回收站，返回真正释放的字节数；failed 返回没删掉的数量</summary>
         public static long RecycleToBin(List<string> files, System.Text.StringBuilder log, out int failed)
         {

@@ -23,6 +23,7 @@ namespace DiskMate
             string wechatProbeRoot = null;
             string wcCleanKey = null;
             string recycleTest = null;
+            string forceTest = null;
             string authTest = null;
             string accountTest = null;
             string announceTest = null;
@@ -59,6 +60,7 @@ namespace DiskMate
                 else if (string.Equals(a, "--wechatprobe", StringComparison.OrdinalIgnoreCase)) wechatProbe = true;
                 else if (a.StartsWith("--wcclean=", StringComparison.OrdinalIgnoreCase)) wcCleanKey = a.Substring("--wcclean=".Length);
                 else if (a.StartsWith("--recycletest=", StringComparison.OrdinalIgnoreCase)) recycleTest = a.Substring("--recycletest=".Length);
+                else if (a.StartsWith("--forcedeltest=", StringComparison.OrdinalIgnoreCase)) forceTest = a.Substring("--forcedeltest=".Length);
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
@@ -229,6 +231,13 @@ namespace DiskMate
                 Console.WriteLine("contact dialog rendered: " + ct[0] + "  lang=" + I18n.Lang);
                 return;
             }
+            if (forceTest != null)
+            {
+                UpdateService.Disabled = true;
+                RunForceDeleteTest(forceTest);
+                return;
+            }
+
             if (recycleTest != null)
             {
                 UpdateService.Disabled = true;
@@ -338,6 +347,48 @@ namespace DiskMate
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
         /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        /// <summary>调试用：验证管理员权限直删（--forcedeltest=文件或目录）</summary>
+        private static void RunForceDeleteTest(string path)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            try
+            {
+                var files = new List<string>();
+                if (File.Exists(path)) files.Add(path);
+                else if (Directory.Exists(path))
+                    files.AddRange(Directory.GetFiles(path, "*", SearchOption.AllDirectories));
+
+                long before = 0;
+                foreach (string f in files) { try { before += new FileInfo(f).Length; } catch { } }
+
+                Console.WriteLine("target   : " + path);
+                Console.WriteLine("files    : " + files.Count);
+                Console.WriteLine("size     : " + Theme.Fmt(before));
+                Console.WriteLine("admin    : " + (Engine.IsElevated() ? "yes" : "no"));
+                if (files.Count > 0)
+                {
+                    FileAttributes attr = File.GetAttributes(files[0]);
+                    Console.WriteLine("attr     : " + attr);
+                }
+
+                var log = new StringBuilder();
+                int failed = 0;
+                long freed = Engine.ForceDeleteFiles(files, log, out failed);
+
+                int left = 0;
+                foreach (string f in files) { try { if (File.Exists(f)) left++; } catch { } }
+
+                Console.WriteLine("freed    : " + Theme.Fmt(freed));
+                Console.WriteLine("failed   : " + failed);
+                Console.WriteLine("left     : " + left + " / " + files.Count);
+                if (log.Length > 0) Console.WriteLine("log      :\n" + log.ToString().TrimEnd());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("forcedeltest failed: " + ex.Message);
+            }
+        }
+
         /// <summary>调试用：验证指定目录所在的盘能不能把文件移进回收站（--recycletest=D://dir）</summary>
         private static void RunRecycleTest(string dir)
         {

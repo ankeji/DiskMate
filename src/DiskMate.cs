@@ -87,6 +87,51 @@ namespace DiskMate
         [DllImport("kernel32.dll")]
         public static extern bool AttachConsole(int pid);
 
+        // ---- 强制删除：直接走内核删除，不经过 Shell 回收站，也不受只读/隐藏/系统属性阻挡 ----
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern bool DeleteFileW(string lpFileName);
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr GetCurrentProcess();
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool CloseHandle(IntPtr hObject);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LUID
+        {
+            public uint LowPart;
+            public int HighPart;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LUID_AND_ATTRIBUTES
+        {
+            public LUID Luid;
+            public uint Attributes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct TOKEN_PRIVILEGES
+        {
+            public uint PrivilegeCount;
+            public LUID_AND_ATTRIBUTES Privilege;
+        }
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool OpenProcessToken(IntPtr processHandle, uint desiredAccess, out IntPtr tokenHandle);
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        public static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, out LUID lpLuid);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool AdjustTokenPrivileges(IntPtr tokenHandle, bool disableAllPrivileges,
+            ref TOKEN_PRIVILEGES newState, uint bufferLength, IntPtr previousState, IntPtr returnLength);
+
+        public const uint TOKEN_QUERY = 0x0008;
+        public const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
+        public const uint SE_PRIVILEGE_ENABLED = 0x0002;
+
         public const uint SHERB_NOCONFIRMATION = 0x1;
         public const uint SHERB_NOPROGRESSUI = 0x2;
         public const uint SHERB_NOSOUND = 0x4;
@@ -833,6 +878,136 @@ namespace DiskMate
                 catch { }
             }
             return gone;
+        }
+
+        /// <summary>当前进程是不是管理员（清单里已要求提权，正常情况下都是 true）</summary>
+        public static bool IsElevated()
+        {
+            try
+            {
+                return new System.Security.Principal.WindowsPrincipal(
+                    System.Security.Principal.WindowsIdentity.GetCurrent())
+                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// 直接用管理员权限删除（不进回收站，不可恢复）。
+        /// 顺序：清只读/隐藏/系统属性 → DeleteFileW → 失败再接管所有权+授权 Administrators 后重试。
+        /// 微信的缓存文件是 0444 只读，而且可能正被微信进程/杀软摸着，所以这里要多层兜底。
+        /// </summary>
+        public static long ForceDeleteFiles(List<string> files, StringBuilder log, out int failed)
+        {
+            failed = 0;
+            long freed = 0;
+            if (files == null || files.Count == 0) return 0;
+
+            EnablePrivileges(log);
+
+            foreach (string f in files)
+            {
+                if (string.IsNullOrEmpty(f)) continue;
+
+                long size = 0;
+                try { if (!File.Exists(f)) continue; size = new FileInfo(f).Length; }
+                catch { }
+
+                if (TryDeleteFile(f)) { freed += size; continue; }
+
+                // 删不掉：接管所有权 + 给 Administrators 完全控制，再试一次
+                if (TakeOwnAndGrant(f, log) && TryDeleteFile(f)) { freed += size; continue; }
+
+                failed++;
+                if (log != null)
+                {
+                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    log.AppendLine("    强制删除失败：" + f + "（错误码 " + err + "）");
+                }
+            }
+
+            if (log != null)
+                log.AppendLine("    强制删除：成功 " + (files.Count - failed) + " 个，失败 " + failed + " 个，释放 " + Theme.Fmt(freed));
+            return freed;
+        }
+
+        private static bool TryDeleteFile(string f)
+        {
+            // 只读/隐藏/系统属性都会让删除失败，先全部摘掉
+            try
+            {
+                FileAttributes a = File.GetAttributes(f);
+                FileAttributes clear = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System;
+                if ((a & clear) != 0) File.SetAttributes(f, a & ~clear);
+            }
+            catch { }
+
+            try { if (Native.DeleteFileW(f)) return true; } catch { }
+            try { File.Delete(f); if (!File.Exists(f)) return true; } catch { }
+
+            return false;
+        }
+
+        /// <summary>takeown + icacls：接管文件所有权并给管理员完全控制</summary>
+        private static bool TakeOwnAndGrant(string path, StringBuilder log)
+        {
+            try
+            {
+                bool ok = RunTool("takeown.exe", "/f \"" + path + "\" /a");
+                RunTool("icacls.exe", "\"" + path + "\" /grant *S-1-5-32-544:F");
+                if (!ok && log != null) log.AppendLine("    takeown 失败：" + path);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (log != null) log.AppendLine("    接管所有权异常：" + ex.Message);
+                return false;
+            }
+        }
+
+        private static bool RunTool(string exe, string args)
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(exe, args);
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    if (p == null) return false;
+                    p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(5000);
+                    return p.HasExited && p.ExitCode == 0;
+                }
+            }
+            catch { return false; }
+        }
+
+        /// <summary>打开备份/还原/接管所有权三个特权，删别人占着的文件时更需要</summary>
+        private static void EnablePrivileges(StringBuilder log)
+        {
+            string[] names = { "SeTakeOwnershipPrivilege", "SeBackupPrivilege", "SeRestorePrivilege" };
+            IntPtr token;
+            if (!Native.OpenProcessToken(Native.GetCurrentProcess(),
+                    Native.TOKEN_ADJUST_PRIVILEGES | Native.TOKEN_QUERY, out token)) return;
+
+            try
+            {
+                foreach (string name in names)
+                {
+                    Native.LUID luid;
+                    if (!Native.LookupPrivilegeValue(null, name, out luid)) continue;
+
+                    var tp = new Native.TOKEN_PRIVILEGES();
+                    tp.PrivilegeCount = 1;
+                    tp.Privilege.Luid = luid;
+                    tp.Privilege.Attributes = Native.SE_PRIVILEGE_ENABLED;
+                    Native.AdjustTokenPrivileges(token, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+                }
+            }
+            finally { Native.CloseHandle(token); }
         }
 
         private static void ClearRecycleFolder(string dir, StringBuilder log)
