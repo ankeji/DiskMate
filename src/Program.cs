@@ -24,10 +24,13 @@ namespace DiskMate
             string announceTest = null;
             string outPath = null;
             bool featureProbe = false;
+            string buildInfo = null;   // "--buildinfo" 打印到控制台；"--buildinfo=file" 同时写文件（CI 校验用）
             foreach (string a in args)
             {
                 if (a.StartsWith("--update-url=", StringComparison.OrdinalIgnoreCase))
                     UpdateService.ManifestUrl = a.Substring("--update-url=".Length);
+                else if (a.StartsWith("--buildinfo=", StringComparison.OrdinalIgnoreCase)) buildInfo = a.Substring("--buildinfo=".Length);
+                else if (string.Equals(a, "--buildinfo", StringComparison.OrdinalIgnoreCase)) buildInfo = "";
                 else if (string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)) selfTest = true;
                 else if (string.Equals(a, "--maskprobe", StringComparison.OrdinalIgnoreCase)) maskProbe = true;
                 else if (string.Equals(a, "--cleanprobe", StringComparison.OrdinalIgnoreCase)) cleanProbe = true;
@@ -46,6 +49,21 @@ namespace DiskMate
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
+            }
+
+            if (buildInfo != null)
+            {
+                string text =
+                    "version=" + AppInfo.Version + Environment.NewLine +
+                    "channel=" + (Api.IsDev ? "dev" : "prod") + Environment.NewLine +
+                    "api=" + Api.BaseUrl + Environment.NewLine;
+                if (buildInfo.Length > 0)
+                {
+                    try { File.WriteAllText(buildInfo, text, new UTF8Encoding(false)); } catch { }
+                }
+                try { Native.AttachConsole(-1); } catch { }
+                Console.Write(text);
+                return;
             }
 
             if (selfTest)
@@ -476,6 +494,9 @@ namespace DiskMate
                 {
                     List<CleanItem> items = form.SelfTestScan();
                     sb.AppendLine("DiskMate selftest  " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    sb.AppendLine("version: " + AppInfo.Version);
+                    sb.AppendLine("channel: " + Api.ChannelName);
+                    sb.AppendLine("api    : " + Api.BaseUrl);
                     sb.AppendLine("admin: " + (IsAdmin() ? "yes" : "no"));
                     sb.AppendLine("items: " + items.Count);
                     long total = 0;

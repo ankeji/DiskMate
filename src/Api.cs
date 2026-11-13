@@ -65,11 +65,26 @@ namespace DiskMate
         }
     }
 
-    /// <summary>账号服务 HTTP 客户端（同步调用，调用方自己放到后台线程）</summary>
+    /// <summary>
+    /// 编译通道。build.bat 默认同时产出两个包：
+    ///   生产包 DiskMate.exe      → 固定连 https://c.softinstall.top（/define 里没有 DISKMATE_DEV）
+    ///   开发包 DiskMate-dev.exe  → 连本机 127.0.0.1:8099，且允许 settings.ini 覆盖 api.base
+    /// 只有生产包会推到 GitHub / 发版。
+    /// </summary>
     internal static class Api
     {
-        /// <summary>服务端地址，可在 settings.ini 里用 api.base = http://host:port 覆盖（本地调试用）</summary>
+#if DISKMATE_DEV
+        public const bool IsDev = true;
+        /// <summary>开发版：默认连本机后端，可用 settings.ini 的 api.base 覆盖</summary>
+        public static string BaseUrl = "http://127.0.0.1:8099";
+#else
+        public const bool IsDev = false;
+        /// <summary>生产版：写死正式地址，不吃本机 settings.ini，避免线上包被指到 localhost</summary>
         public static string BaseUrl = "https://c.softinstall.top";
+#endif
+
+        /// <summary>日志里展示的通道名</summary>
+        public static string ChannelName { get { return IsDev ? "开发版（dev）" : "生产版（prod）"; } }
 
         static Api()
         {
@@ -78,9 +93,11 @@ namespace DiskMate
             catch { }
         }
 
-        /// <summary>读 settings.ini 里的 api.base（%LOCALAPPDATA%\DiskMate 优先，其次 exe 目录）</summary>
+        /// <summary>读 settings.ini 里的 api.base（只有开发版认这个开关）</summary>
         public static void LoadConfig()
         {
+#if DISKMATE_DEV
+            // 生产版不走这里：BaseUrl 编译期写死，本机残留的调试配置也不会把线上包指到 127.0.0.1
             try
             {
                 string[] candidates =
@@ -103,6 +120,7 @@ namespace DiskMate
                 }
             }
             catch { }
+#endif
         }
 
         public static ApiResult Get(string path, string token)

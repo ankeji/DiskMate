@@ -480,6 +480,7 @@ namespace DiskMate
             Session.Load();
             FeatureGate.Load();   // 先读本地缓存立刻可用，再后台拉服务端最新开关
             UpdateAccountButton();
+            Log("构建通道：" + Api.ChannelName);
             Log("账号服务：" + Api.BaseUrl + (Session.IsLoggedIn ? "（已登录 " + Session.Email + "）" : "（未登录）"));
             Log("功能开关：" + FeatureGate.Describe());
             if (!Session.IsLoggedIn) return;

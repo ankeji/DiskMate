@@ -228,16 +228,32 @@ DiskMate.exe --langtest           打印 10 种语言的抽查词条
 - 登录：邮箱 + 密码；连续失败多次时服务端会要求图形验证码
 - 登录态存在 `%LOCALAPPDATA%\DiskMate\session.ini`，只保存 refreshToken，到期自动续期；删除该文件即退出
 
-后端地址默认 `http://127.0.0.1:8099`，可在 `settings.ini`（`%LOCALAPPDATA%\DiskMate\settings.ini` 或 exe 同目录）里改：
+后端地址是**编译期固定**的，分两个包：
+
+| 包 | 连的后端 | 能否被 settings.ini 覆盖 |
+|---|---|---|
+| `DiskMate.exe`（生产包，发版用） | `https://c.softinstall.top` | ❌ 不读 api.base，防止线上包被指到本机 |
+| `DiskMate-dev.exe`（开发包） | `http://127.0.0.1:8099` | ✅ 读 `settings.ini` 的 `api.base` |
 
 ```ini
+; 只有开发包认这一段
 lang=zh-CN
-api.base=https://your-server.example.com
+api.base=http://192.168.1.10:8099
+```
+
+编译时确认通道：
+
+```
+DiskMate.exe --buildinfo
+version=1.0.5
+channel=prod
+api=https://c.softinstall.top
 ```
 
 自检命令：
 
 ```
+DiskMate.exe --buildinfo                 打印版本 / 通道 / 后端地址
 DiskMate.exe --authtest=邮箱|密码        真的走一遍 HTTP：验证码 → 登录 → /me → 刷新令牌
 DiskMate.exe --accountdialog=out.png|register   渲染账号弹窗（login / register / logged）
 ```
@@ -254,9 +270,15 @@ cd DiskMate
 build.bat
 ```
 
-脚本调用 `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe` 三步走：先编译出无图标的 `_build.exe` → 用它生成 `app.ico` → 带 `/win32icon` 重新编译 `DiskMate.exe`。无需 Visual Studio、无需 NuGet。
+脚本调用 `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`，三步走：先编译出无图标的 `_build.exe` → 用它生成 `app.ico` → 带 `/win32icon` 编译成品。**默认一次出两个包**：
 
-`build.bat /nopause` 给 CI 用（结束时不停在 pause）。
+```
+build.bat            两个都编：DiskMate.exe（生产）+ DiskMate-dev.exe（开发）
+build.bat prod       只编生产包（CI 用这个）
+build.bat dev        只编开发包
+```
+
+开发包靠 `/define:DISKMATE_DEV` 区分（见 `src/Api.cs` 的 `IsDev`）。CI 发版固定跑 `build.bat prod /nopause`，并且有一道 `--buildinfo` 校验：如果打出来的包不是 `channel=prod` / `api=https://c.softinstall.top`，构建直接失败，不会产出 Release。无需 Visual Studio、无需 NuGet。
 
 推送代码到自己的仓库：
 

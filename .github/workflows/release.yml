@@ -14,9 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build (csc, no installer needed)
+      - name: Build prod (csc, no installer needed)
         shell: cmd
-        run: build.bat /nopause
+        run: build.bat prod /nopause
+
+      - name: Guard - must be the prod build
+        shell: cmd
+        run: |
+          DiskMate.exe --buildinfo=buildinfo.txt
+          type buildinfo.txt
+          findstr /c:"channel=prod" buildinfo.txt || exit /b 1
+          findstr /c:"api=https://c.softinstall.top" buildinfo.txt || exit /b 1
 
       - name: Self test
         shell: cmd
