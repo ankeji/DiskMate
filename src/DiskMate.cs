@@ -128,6 +128,25 @@ namespace DiskMate
         public static extern bool AdjustTokenPrivileges(IntPtr tokenHandle, bool disableAllPrivileges,
             ref TOKEN_PRIVILEGES newState, uint bufferLength, IntPtr previousState, IntPtr returnLength);
 
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern bool SetFileAttributesW(string lpFileName, uint dwFileAttributes);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern uint GetFileAttributesW(string lpFileName);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern bool MoveFileExW(string lpExistingFileName, string lpNewFileName, uint dwFlags);
+
+        public const uint MOVEFILE_REPLACE_EXISTING = 0x00000001;
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr CreateFileW(string lpFileName, uint dwDesiredAccess, uint dwShareMode,
+            IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+        public const uint GENERIC_READ_ACCESS = 0x80000000;
+        public const uint OPEN_EXISTING_DISPOSITION = 3;
+        public const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
+
         public const uint TOKEN_QUERY = 0x0008;
         public const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
         public const uint SE_PRIVILEGE_ENABLED = 0x0002;
@@ -892,37 +911,76 @@ namespace DiskMate
             catch { return false; }
         }
 
+        /// <summary>微信相关的进程名（4.x 是 Weixin，3.x 是 WeChat，另外还有一堆子进程）</summary>
+        public static readonly string[] WeChatProcessNames =
+        {
+            "Weixin", "WeChat", "WeChatAppEx", "WeChatOCR", "WeChatPlayer",
+            "WeChatBrowser", "WeChatUtility", "WeixinUpdate"
+        };
+
+        /// <summary>上一次强制删除时查到是谁占着（给界面提示用）</summary>
+        public static List<string> LastLockers = new List<string>();
+
         /// <summary>
         /// 直接用管理员权限删除（不进回收站，不可恢复）。
-        /// 顺序：清只读/隐藏/系统属性 → DeleteFileW → 失败再接管所有权+授权 Administrators 后重试。
-        /// 微信的缓存文件是 0444 只读，而且可能正被微信进程/杀软摸着，所以这里要多层兜底。
+        /// 第一轮：清 ReadOnly/Hidden/System → DeleteFileW（重试 3 次，每次间隔 120ms）。
+        /// 第二轮：仍然失败的，takeown + icacls 接管所有权后再试。
+        /// 最后把「是谁占着」查出来，写进日志并留给界面提示。
         /// </summary>
         public static long ForceDeleteFiles(List<string> files, StringBuilder log, out int failed)
         {
             failed = 0;
+            LastLockers = new List<string>();
             long freed = 0;
             if (files == null || files.Count == 0) return 0;
 
             EnablePrivileges(log);
 
+            var left = new List<string>();
             foreach (string f in files)
             {
                 if (string.IsNullOrEmpty(f)) continue;
-
                 long size = 0;
                 try { if (!File.Exists(f)) continue; size = new FileInfo(f).Length; }
                 catch { }
+                if (TryDeleteFile(f, 3)) { freed += size; continue; }
+                left.Add(f);
+            }
 
-                if (TryDeleteFile(f)) { freed += size; continue; }
+            if (left.Count > 0)
+            {
+                foreach (string f in left) TakeOwnAndGrant(f, log);
 
-                // 删不掉：接管所有权 + 给 Administrators 完全控制，再试一次
-                if (TakeOwnAndGrant(f, log) && TryDeleteFile(f)) { freed += size; continue; }
+                var still = new List<string>();
+                foreach (string f in left)
+                {
+                    long size = 0;
+                    try { if (!File.Exists(f)) continue; size = new FileInfo(f).Length; }
+                    catch { }
+                    if (TryDeleteFile(f, 2)) { freed += size; continue; }
+                    still.Add(f);
+                }
+                left = still;
+            }
 
-                failed++;
+            if (left.Count > 0)
+            {
+                failed = left.Count;
+                List<string> lockers = FindLockers(left);
+                LastLockers = lockers;
+
                 if (log != null)
                 {
-                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
-                    log.AppendLine("    强制删除失败：" + f + "（错误码 " + err + "）");
+                    int shown = 0;
+                    foreach (string f in left)
+                    {
+                        if (shown++ >= 5) { log.AppendLine("    …另有 " + (left.Count - 5) + " 个同样删不掉"); break; }
+                        log.AppendLine("    删不掉：" + f);
+                    }
+                    if (lockers.Count > 0)
+                        log.AppendLine("    占用进程：" + string.Join("、", lockers.ToArray()));
+                    else
+                        log.AppendLine("    没有查到占用进程（可能需要管理员权限，或被安全软件拦截）");
                 }
             }
 
@@ -931,14 +989,28 @@ namespace DiskMate
             return freed;
         }
 
-        private static bool TryDeleteFile(string f)
+        private static bool TryDeleteFile(string f, int tries)
         {
-            // 只读/隐藏/系统属性都会让删除失败，先全部摘掉
+            for (int i = 0; i < tries; i++)
+            {
+                if (DeleteOnce(f)) return true;
+                try { System.Threading.Thread.Sleep(120); } catch { }
+            }
+            return false;
+        }
+
+        private static bool DeleteOnce(string f)
+        {
+            // 用 Win32 直接清属性：.NET 的 File.SetAttributes 在被占用时会静默失败，
+            // 只读位没清掉，DeleteFileW 就只会返回 5（拒绝访问）—— 这就是之前一直删不掉的原因。
             try
             {
-                FileAttributes a = File.GetAttributes(f);
-                FileAttributes clear = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System;
-                if ((a & clear) != 0) File.SetAttributes(f, a & ~clear);
+                uint attr = Native.GetFileAttributesW(f);
+                if (attr != 0xFFFFFFFF)
+                {
+                    uint clear = 0x01 | 0x02 | 0x04;   // READONLY | HIDDEN | SYSTEM
+                    if ((attr & clear) != 0) Native.SetFileAttributesW(f, attr & ~clear);
+                }
             }
             catch { }
 
@@ -953,8 +1025,8 @@ namespace DiskMate
         {
             try
             {
-                bool ok = RunTool("takeown.exe", "/f \"" + path + "\" /a");
-                RunTool("icacls.exe", "\"" + path + "\" /grant *S-1-5-32-544:F");
+                bool ok = RunTool(ToolPath("takeown.exe"), "/f \"" + path + "\" /a");
+                RunTool(ToolPath("icacls.exe"), "\"" + path + "\" /grant *S-1-5-32-544:F");
                 if (!ok && log != null) log.AppendLine("    takeown 失败：" + path);
                 return true;
             }
@@ -963,6 +1035,27 @@ namespace DiskMate
                 if (log != null) log.AppendLine("    接管所有权异常：" + ex.Message);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 32 位进程访问 System32 会被重定向到 SysWOW64，那里没有 takeown.exe，
+        /// 所以 64 位系统上要优先用 Sysnative。
+        /// </summary>
+        private static string ToolPath(string exe)
+        {
+            try
+            {
+                string windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                if (Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess)
+                {
+                    string native = Path.Combine(Path.Combine(windir, "Sysnative"), exe);
+                    if (File.Exists(native)) return native;
+                }
+                string sys = Path.Combine(Path.Combine(windir, "System32"), exe);
+                if (File.Exists(sys)) return sys;
+            }
+            catch { }
+            return exe;
         }
 
         private static bool RunTool(string exe, string args)
@@ -978,11 +1071,94 @@ namespace DiskMate
                 {
                     if (p == null) return false;
                     p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(5000);
+                    p.WaitForExit(6000);
                     return p.HasExited && p.ExitCode == 0;
                 }
             }
             catch { return false; }
+        }
+
+        /// <summary>
+        /// 判断这些文件到底是不是被别的进程占着（独占打开：不共享任何模式）。
+        /// 不追求查出具体 PID —— 微信的子进程会不断变化，知道"被占用" + "微信在不在跑"就够给用户指路了。
+        /// </summary>
+        public static List<string> FindLockers(List<string> paths)
+        {
+            var result = new List<string>();
+            if (paths == null || paths.Count == 0) return result;
+
+            int locked = 0;
+            int checkedCount = 0;
+            foreach (string p in paths)
+            {
+                if (checkedCount++ >= 12) break;
+                if (IsFileLocked(p)) locked++;
+            }
+            if (locked == 0) return result;
+
+            result.Add(WeChatRunning()
+                ? "微信（Weixin.exe / WeChatAppEx.exe）"
+                : "其他程序");
+            return result;
+        }
+
+        /// <summary>以独占方式打开试试：打不开且返回 32（共享冲突）就是被占用了</summary>
+        public static bool IsFileLocked(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            try
+            {
+                IntPtr h = Native.CreateFileW(path, Native.GENERIC_READ_ACCESS, 0, IntPtr.Zero,
+                    Native.OPEN_EXISTING_DISPOSITION, 0x80, IntPtr.Zero);
+                if (h == new IntPtr(-1))
+                {
+                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    return err == 32 || err == 33;
+                }
+                Native.CloseHandle(h);
+                return false;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>结束微信相关进程，返回结束掉的个数</summary>
+        public static int KillWeChatProcesses()
+        {
+            int n = 0;
+            foreach (string name in WeChatProcessNames)
+            {
+                System.Diagnostics.Process[] ps;
+                try { ps = System.Diagnostics.Process.GetProcessesByName(name); }
+                catch { continue; }
+
+                foreach (System.Diagnostics.Process p in ps)
+                {
+                    try { p.Kill(); n++; }
+                    catch { }
+                    finally { try { p.Dispose(); } catch { } }
+                }
+            }
+            try { System.Threading.Thread.Sleep(500); } catch { }
+            return n;
+        }
+
+        /// <summary>当前有没有微信在跑</summary>
+        public static bool WeChatRunning()
+        {
+            foreach (string name in WeChatProcessNames)
+            {
+                try
+                {
+                    System.Diagnostics.Process[] ps = System.Diagnostics.Process.GetProcessesByName(name);
+                    if (ps.Length > 0)
+                    {
+                        foreach (System.Diagnostics.Process p in ps) { try { p.Dispose(); } catch { } }
+                        return true;
+                    }
+                }
+                catch { }
+            }
+            return false;
         }
 
         /// <summary>打开备份/还原/接管所有权三个特权，删别人占着的文件时更需要</summary>

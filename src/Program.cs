@@ -383,6 +383,7 @@ namespace DiskMate
                 Console.WriteLine("freed    : " + Theme.Fmt(freed));
                 Console.WriteLine("failed   : " + failed);
                 Console.WriteLine("left     : " + left + " / " + files.Count);
+                Console.WriteLine("lockers  : " + (Engine.LastLockers.Count == 0 ? "(none)" : string.Join("、", Engine.LastLockers.ToArray())) );
                 if (log.Length > 0) Console.WriteLine("log      :\n" + log.ToString().TrimEnd());
             }
             catch (Exception ex)

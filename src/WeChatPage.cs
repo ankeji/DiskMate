@@ -423,6 +423,10 @@ namespace DiskMate
             string askText = I18n.F(direct ? "wechat.delAskForce" : "wechat.delAsk", files.Count, Theme.Fmt(total));
             string askOk = I18n.T(direct ? "wechat.delOkForce" : "wechat.delOk");
 
+            // 微信还在跑的话，直删十有八九删不掉，先把话说清楚
+            if (direct && Engine.WeChatRunning())
+                askText = askText + "\n\n" + I18n.T("wechat.runningHint");
+
             if (!MessageDialog.Ask(this, askTitle, askText, askOk, true))
                 return;
 
@@ -444,7 +448,7 @@ namespace DiskMate
                     try { freed = Engine.ForceDeleteFiles(files, log, out failed); }
                     catch (Exception ex) { log.AppendLine("    强制删除异常：" + ex.Message); failed = files.Count; }
 
-                    Ui(delegate { FinishWcClean(freed, failed, log); });
+                    Ui(delegate { FinishWcClean(freed, failed, log, files); });
                 }, TaskCreationOptions.LongRunning);
                 return;
             }
@@ -464,7 +468,7 @@ namespace DiskMate
 
                 if (failed <= 0)
                 {
-                    Ui(delegate { FinishWcClean(freed, 0, log); });
+                    Ui(delegate { FinishWcClean(freed, 0, log, files); });
                     return;
                 }
 
@@ -478,13 +482,13 @@ namespace DiskMate
 
                 Ui(delegate
                 {
-                    if (left.Count == 0) { FinishWcClean(freed, 0, log); return; }
+                    if (left.Count == 0) { FinishWcClean(freed, 0, log, files); return; }
 
                     bool force = MessageDialog.Ask(this, I18n.T("wechat.forceTitle"),
                         I18n.F("wechat.forceAsk", left.Count, Theme.Fmt(WeChatScanner.TotalSize(left))),
                         I18n.T("wechat.forceOk"), true);
 
-                    if (!force) { FinishWcClean(freed, left.Count, log); return; }
+                    if (!force) { FinishWcClean(freed, left.Count, log, null); return; }
 
                     lblWcHint.Text = I18n.T("wechat.forcing");
 
@@ -495,15 +499,61 @@ namespace DiskMate
                         try { more = Engine.ForceDeleteFiles(left, log, out still); }
                         catch { }
 
-                        Ui(delegate { FinishWcClean(freed + more, still, log); });
+                        Ui(delegate { FinishWcClean(freed + more, still, log, left); });
                     }, TaskCreationOptions.LongRunning);
                 });
             }, TaskCreationOptions.LongRunning);
         }
 
-        /// <summary>清理收尾：提示 + 日志 + 自动重扫（failed 是最后仍然没删掉的数量）</summary>
-        private void FinishWcClean(long freed, int failed, StringBuilder log)
+        /// <summary>
+        /// 清理收尾：如果还有没删掉的，先查是谁占着，问用户要不要关掉微信再试一次；
+        /// attempted 为 null 表示这次是重试后的收尾，不再追问。
+        /// </summary>
+        private void FinishWcClean(long freed, int failed, StringBuilder log, List<string> attempted)
         {
+            if (failed > 0 && attempted != null)
+            {
+                var left = new List<string>();
+                foreach (string f in attempted)
+                {
+                    try { if (File.Exists(f)) left.Add(f); }
+                    catch { }
+                }
+
+                if (left.Count > 0)
+                {
+                    string who = Engine.LastLockers.Count > 0
+                        ? string.Join("、", Engine.LastLockers.ToArray())
+                        : "";
+
+                    string text = who.Length > 0
+                        ? I18n.F("wechat.killAsk", left.Count, who)
+                        : I18n.F("wechat.killAskNoLocker", left.Count);
+
+                    if (MessageDialog.Ask(this, I18n.T("wechat.killTitle"), text, I18n.T("wechat.killOk"), true))
+                    {
+                        lblWcHint.Text = I18n.T("wechat.killing");
+
+                        Task.Factory.StartNew(delegate
+                        {
+                            int killed = Engine.KillWeChatProcesses();
+
+                            var log2 = new StringBuilder();
+                            if (log != null && log.Length > 0) log2.Append(log.ToString()).AppendLine();
+                            log2.AppendLine("    关闭微信进程 " + killed + " 个，重试删除 " + left.Count + " 个文件");
+
+                            int still = 0;
+                            long more = 0;
+                            try { more = Engine.ForceDeleteFiles(left, log2, out still); }
+                            catch { }
+
+                            Ui(delegate { FinishWcClean(freed + more, still, log2, null); });
+                        }, TaskCreationOptions.LongRunning);
+                        return;
+                    }
+                }
+            }
+
             wcBusy = false;
 
             if (failed > 0)
