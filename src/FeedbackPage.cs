@@ -335,6 +335,7 @@ namespace DiskMate
             }
             sb.AppendLine("columns=" + (lvFb.Columns.Count > 0 ? string.Join("/", ColumnTexts()) : "-"));
             sb.AppendLine("rows=" + lvFb.Items.Count + " detail=" + txtFbDetail.TextLength + " chars");
+            if (bannerHost != null) sb.AppendLine("banner=" + bannerHost.Bounds + (bannerHost.Visible ? "" : " (hidden)"));
             return sb.ToString();
         }
 

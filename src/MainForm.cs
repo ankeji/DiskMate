@@ -364,9 +364,10 @@ namespace DiskMate
             int bh = Theme.P(52);
             if (bannerHost != null)
             {
-                // 悬浮在顶栏下方一点的位置，宽度留出左右边距；不占用 content 的高度
-                bannerHost.SetBounds(Theme.P(24), Theme.P(14),
-                    Math.Max(Theme.P(240), w - Theme.P(48)), bh);
+                // 悬浮在页面底部居中（toast 样式）：不占 layout，出现/消失都不会让页面跳动
+                int bw = Math.Min(Theme.P(720), Math.Max(Theme.P(320), w - Theme.P(96)));
+                int by = Math.Max(Theme.P(86), h - bh - Theme.P(18));
+                bannerHost.SetBounds((w - bw) / 2, by, bw, bh);
                 if (bannerHost.Visible) bannerHost.BringToFront();
             }
             content.SetBounds(Theme.P(0), y, w, Math.Max(Theme.P(0), h - y));
