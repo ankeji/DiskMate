@@ -261,6 +261,24 @@ DiskMate.exe --accountdialog=out.png|register   渲染账号弹窗（login / reg
 
 账号服务没启动也不影响清理功能，只是侧边栏显示「登录 / 注册」且点击会提示连不上。
 
+## 八点五、问题反馈（数据库版）
+
+侧边栏「问题反馈」是一个独立页面，不再是二维码弹窗：
+
+- 顶部：`写反馈` / `刷新` / 状态下拉（全部 / 待处理 / 处理中 / 已解决）
+- 列表：所有人的反馈（状态、标题、提交人、时间），点一行在下方看正文与官方回复
+- 「写反馈」弹窗：标题最多 **50 字**、内容最多 **500 字**，带实时字数统计；提交后立刻出现在列表里
+- 未登录也能提交（记为匿名）；登录后提交会带上邮箱打码后的账号，列表里标「我」
+- 数据来自 `DiskMate-admin`：`GET /api/feedback`（公开）、`POST /api/feedback`（可选登录，同 IP 10 分钟 10 条、2 分钟内同内容去重）
+- 后台在 `https://c.softinstall.top/admin` → 「📨 问题反馈」改状态、写官方回复、删除
+
+调试命令：
+
+```
+DiskMate.exe --feedbackpage=out.png    渲染问题反馈页
+DiskMate.exe --feedbackdialog=out.png  渲染写反馈弹窗
+```
+
 ## 九、从源码编译
 
 需要 Windows 自带的 .NET Framework 4.x（Win10/11 默认都有）：

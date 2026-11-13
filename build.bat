@@ -30,7 +30,7 @@ if not exist "%CSC%" (
   exit /b 1
 )
 
-set "SRC=src\DiskMate.cs src\Controls.cs src\Dialogs.cs src\I18n.cs src\LangMore.cs src\Logo.cs src\Json.cs src\Update.cs src\UpdateDialog.cs src\FlatScroll.cs src\Pages.cs src\MainForm.cs src\Program.cs src\Donate.cs src\Contact.cs src\Api.cs src\Session.cs src\AccountDialog.cs src\WeChat.cs src\Announcement.cs src\FeatureGate.cs"
+set "SRC=src\DiskMate.cs src\Controls.cs src\Dialogs.cs src\I18n.cs src\LangMore.cs src\Logo.cs src\Json.cs src\Update.cs src\UpdateDialog.cs src\FlatScroll.cs src\Pages.cs src\MainForm.cs src\Program.cs src\Donate.cs src\Contact.cs src\Api.cs src\Session.cs src\AccountDialog.cs src\WeChat.cs src\Announcement.cs src\FeatureGate.cs src\Feedback.cs src\FeedbackPage.cs"
 set "REFS=/reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll"
 set "FLAGS=/nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 /win32manifest:src\app.manifest"
 

@@ -118,6 +118,7 @@ namespace DiskMate
             BuildBigPage();
             BuildLogPage();
             BuildWeChatPage();
+            BuildFeedbackPage();
             RefreshDrives();
 
             ShowPage(0);
@@ -196,9 +197,9 @@ namespace DiskMate
                 ShowPage(3);
             };
 
-            // 问题反馈：和清理体检/大文件/日志一样占一整行，点击弹出二维码
+            // 问题反馈：独立页面，列出所有人的反馈与处理状态，也能自己提交
             navContact = MakeNav(I18n.T("contact.btn"), "chat");
-            navContact.Click += delegate { ContactDialog.Show(this); };
+            navContact.Click += delegate { ShowPage(4); };
 
             btnLang = new FlatButton();
             btnLang.Kind = BtnKind.Secondary;
@@ -339,6 +340,7 @@ namespace DiskMate
             pageBig = new Panel(); pageBig.Dock = DockStyle.Fill; pageBig.BackColor = Theme.Bg; pageBig.Visible = false; content.Controls.Add(pageBig);
             pageLog = new Panel(); pageLog.Dock = DockStyle.Fill; pageLog.BackColor = Theme.Bg; pageLog.Visible = false; content.Controls.Add(pageLog);
             pageWechat = new Panel(); pageWechat.Dock = DockStyle.Fill; pageWechat.BackColor = Theme.Bg; pageWechat.Visible = false; content.Controls.Add(pageWechat);
+            pageFeedback = new Panel(); pageFeedback.Dock = DockStyle.Fill; pageFeedback.BackColor = Theme.Bg; pageFeedback.Visible = false; content.Controls.Add(pageFeedback);
 
             LayoutSidebar();
             mainHost.Resize += delegate { LayoutMain(); };
@@ -545,12 +547,15 @@ namespace DiskMate
             pageBig.Visible = idx == 1;
             pageLog.Visible = idx == 2;
             pageWechat.Visible = idx == 3;
+            pageFeedback.Visible = idx == 4;
 
             navClean.Active = idx == 0;
             navBig.Active = idx == 1;
             navLog.Active = idx == 2;
             navWechat.Active = idx == 3;
+            if (navContact != null) navContact.Active = idx == 4;
             navClean.Invalidate(); navBig.Invalidate(); navLog.Invalidate(); navWechat.Invalidate();
+            if (navContact != null) navContact.Invalidate();
 
             string titleKey, subKey;
             switch (idx)
@@ -567,6 +572,10 @@ namespace DiskMate
                     titleKey = "wechat.btn";
                     subKey = "page.wechat.sub";
                     break;
+                case 4:
+                    titleKey = "nav.feedback";
+                    subKey = "page.feedback.sub";
+                    break;
                 default:
                     titleKey = "nav.log";
                     subKey = "page.log.sub";
@@ -574,6 +583,7 @@ namespace DiskMate
             }
             lblPageTitle.Text = I18n.T(titleKey);
             lblPageSub.Text = I18n.T(subKey);
+            if (idx == 4) RefreshFeedback(false);
             RefreshDrives();
         }
 
@@ -669,6 +679,17 @@ namespace DiskMate
             if (lblBigHint != null && lvBig != null && lvBig.Items.Count == 0) lblBigHint.Text = I18n.T("big.idle");
             if (cmbThreshold != null) FillThresholds();
             if (lblBigEmpty != null && lblBigEmpty.Visible) lblBigEmpty.Text = I18n.T("big.idle");
+            if (cmbFbStatus != null) FillFbStatusOptions();
+            if (lvFb != null && lvFb.Columns.Count >= 4)
+            {
+                lvFb.Columns[0].Text = I18n.T("fb.col.status");
+                lvFb.Columns[1].Text = I18n.T("fb.col.title");
+                lvFb.Columns[2].Text = I18n.T("fb.col.author");
+                lvFb.Columns[3].Text = I18n.T("fb.col.time");
+            }
+            if (lblFbEmpty != null) lblFbEmpty.Text = I18n.T("fb.empty");
+            if (lblFbHint != null && lvFb != null) lblFbHint.Text = I18n.F("fb.count", lvFb.Items.Count);
+            if (lvFb != null && lvFb.Items.Count > 0) FillFbList(FeedbackService.Cached);
             UpdateAdminChip();
             UpdateLastScanText();
 

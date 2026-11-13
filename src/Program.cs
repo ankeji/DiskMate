@@ -22,6 +22,8 @@ namespace DiskMate
             string authTest = null;
             string accountTest = null;
             string announceTest = null;
+            string fbPageShot = null;
+            string fbDialogShot = null;
             string outPath = null;
             bool featureProbe = false;
             bool announceProbe = false;
@@ -50,7 +52,23 @@ namespace DiskMate
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
+                else if (a.StartsWith("--feedbackpage=", StringComparison.OrdinalIgnoreCase)) fbPageShot = a.Substring("--feedbackpage=".Length);
+                else if (a.StartsWith("--feedbackdialog=", StringComparison.OrdinalIgnoreCase)) fbDialogShot = a.Substring("--feedbackdialog=".Length);
                 else if (!a.StartsWith("--")) outPath = a;
+            }
+
+            if (fbDialogShot != null)
+            {
+                UpdateService.Disabled = true;
+                FeedbackDialog.RenderTo(fbDialogShot);
+                return;
+            }
+
+            if (fbPageShot != null)
+            {
+                UpdateService.Disabled = true;
+                RenderFeedbackPage(fbPageShot);
+                return;
             }
 
             if (buildInfo != null)
@@ -280,6 +298,40 @@ namespace DiskMate
         /// 公告自检：真拉一次 /api/announcements/latest，打印 id / 更新时间 / 本地已读标记 / 这次会不会弹。
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
+        /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        private static void RenderFeedbackPage(string path)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            try
+            {
+                using (var form = new MainForm())
+                {
+                    form.Show();
+                    form.TestShowFeedback();
+                    DateTime until = DateTime.Now.AddSeconds(4);
+                    while (DateTime.Now < until)
+                    {
+                        Application.DoEvents();
+                        System.Threading.Thread.Sleep(60);
+                    }
+                    form.Refresh();
+                    Application.DoEvents();
+                    Console.Write(form.DescribeFeedbackLayout());
+                    using (var bmp = new Bitmap(form.Width, form.Height))
+                    {
+                        form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
+                        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    form.Close();
+                }
+                Console.WriteLine("ok");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("render failed: " + ex.Message);
+            }
+        }
+
         private static void RunAnnounceProbe()
         {
             try { Native.AttachConsole(-1); } catch { }
