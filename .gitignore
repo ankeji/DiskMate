@@ -21,6 +21,7 @@ _render-*.png
 buildinfo.txt
 diskmate-selftest.txt
 diskmate-featureprobe.txt
+_build.log
 
 # IDE
 .vs/
