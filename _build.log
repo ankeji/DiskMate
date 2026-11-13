@@ -1,0 +1,59 @@
+[1/3] Building bootstrap (no icon) ...
+src\MainForm.cs(1724,31): warning CS0108: “DiskMate.MainForm.Name(System.Windows.Forms.Control)”隐藏了继承的成员“System.Windows.Forms.Control.Name”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Donate.cs(127,28): warning CS0108: “DiskMate.DonateDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Contact.cs(71,28): warning CS0108: “DiskMate.ContactDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(427,28): warning CS0108: “DiskMate.WeChatDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(474,21): warning CS0108: “DiskMate.CheckRow.Size”隐藏了继承的成员“System.Windows.Forms.Control.Size”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Feedback.cs(370,28): warning CS0108: “DiskMate.FeedbackDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Controls.cs(50,21): warning CS0649: 从未对字段“DiskMate.FlatButton.Active”赋值，字段将一直保持其默认值 false
+src\Controls.cs(181,21): warning CS0649: 从未对字段“DiskMate.Badge.Bordered”赋值，字段将一直保持其默认值 false
+src\Controls.cs(388,21): warning CS0649: 从未对字段“DiskMate.ThinProgress.Marquee”赋值，字段将一直保持其默认值 false
+src\Dialogs.cs(12,25): warning CS0649: 从未对字段“DiskMate.DialogShell.body”赋值，字段将一直保持其默认值 null
+[2/3] Generating app.ico ...
+[3/3] Building PROD (DiskMate.exe) ...
+src\MainForm.cs(1724,31): warning CS0108: “DiskMate.MainForm.Name(System.Windows.Forms.Control)”隐藏了继承的成员“System.Windows.Forms.Control.Name”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Donate.cs(127,28): warning CS0108: “DiskMate.DonateDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Contact.cs(71,28): warning CS0108: “DiskMate.ContactDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(427,28): warning CS0108: “DiskMate.WeChatDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(474,21): warning CS0108: “DiskMate.CheckRow.Size”隐藏了继承的成员“System.Windows.Forms.Control.Size”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Feedback.cs(370,28): warning CS0108: “DiskMate.FeedbackDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Controls.cs(50,21): warning CS0649: 从未对字段“DiskMate.FlatButton.Active”赋值，字段将一直保持其默认值 false
+src\Controls.cs(181,21): warning CS0649: 从未对字段“DiskMate.Badge.Bordered”赋值，字段将一直保持其默认值 false
+src\Controls.cs(388,21): warning CS0649: 从未对字段“DiskMate.ThinProgress.Marquee”赋值，字段将一直保持其默认值 false
+src\Dialogs.cs(12,25): warning CS0649: 从未对字段“DiskMate.DialogShell.body”赋值，字段将一直保持其默认值 null
+[3/3] Building DEV  (DiskMate-dev.exe) ...
+src\MainForm.cs(1724,31): warning CS0108: “DiskMate.MainForm.Name(System.Windows.Forms.Control)”隐藏了继承的成员“System.Windows.Forms.Control.Name”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Donate.cs(127,28): warning CS0108: “DiskMate.DonateDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Contact.cs(71,28): warning CS0108: “DiskMate.ContactDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(427,28): warning CS0108: “DiskMate.WeChatDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\WeChat.cs(474,21): warning CS0108: “DiskMate.CheckRow.Size”隐藏了继承的成员“System.Windows.Forms.Control.Size”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Feedback.cs(370,28): warning CS0108: “DiskMate.FeedbackDialog.Show(System.Windows.Forms.IWin32Window)”隐藏了继承的成员“System.Windows.Forms.Form.Show(System.Windows.Forms.IWin32Window)”。如果是有意隐藏，请使用关键字 new。
+c:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll: (与前一个警告相关的符号位置)
+src\Controls.cs(50,21): warning CS0649: 从未对字段“DiskMate.FlatButton.Active”赋值，字段将一直保持其默认值 false
+src\Controls.cs(181,21): warning CS0649: 从未对字段“DiskMate.Badge.Bordered”赋值，字段将一直保持其默认值 false
+src\Controls.cs(388,21): warning CS0649: 从未对字段“DiskMate.ThinProgress.Marquee”赋值，字段将一直保持其默认值 false
+src\Dialogs.cs(12,25): warning CS0649: 从未对字段“DiskMate.DialogShell.body”赋值，字段将一直保持其默认值 null
+
+[OK] prod  DiskMate.exe  1114624 bytes  to https://c.softinstall.top
+[OK] dev   DiskMate-dev.exe  1115136 bytes  to http://127.0.0.1:8099
+
+Check: DiskMate.exe --buildinfo      (prints version / channel / api)
+Test:  DiskMate.exe --selftest
+Icon:  DiskMate.exe --makeicon app.ico

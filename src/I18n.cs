@@ -674,8 +674,12 @@ big.scanning|扫描中…
 big.idle|还没有扫描。点击「扫描大文件」列出占用空间最大的文件。
 big.none|没有找到大于 {0} 的文件，换个更小的阈值试试。
 big.progress|正在扫描… 已检查 {0:N0} 个文件，命中 {1} 个
-big.done|检查了 {0:N0} 个文件，找到 {1} 个大于 {2} 的文件（只展示，不删除）
+big.done|检查了 {0:N0} 个文件，找到 {1} 个大于 {2} 的文件
 big.cancel|扫描已取消
+big.pause|暂停
+big.resume|继续
+big.paused|已暂停 · 已检查 {0:N0} 个文件，命中 {1} 个
+big.busy|正在清理，稍后再扫大文件
 big.open|打开位置
 big.colsize|大小
 big.colpath|路径
@@ -874,8 +878,12 @@ big.scanning|掃描中…
 big.idle|還沒有掃描。點擊「掃描大檔案」列出占用空間最大的檔案。
 big.none|沒有找到大於 {0} 的檔案，換個更小的閾值試試。
 big.progress|正在掃描… 已檢查 {0:N0} 個檔案，命中 {1} 個
-big.done|檢查了 {0:N0} 個檔案，找到 {1} 個大於 {2} 的檔案（只顯示，不刪除）
+big.done|檢查了 {0:N0} 個檔案，找到 {1} 個大於 {2} 的檔案
 big.cancel|掃描已取消
+big.pause|暫停
+big.resume|繼續
+big.paused|已暫停 · 已檢查 {0:N0} 個檔案，命中 {1} 個
+big.busy|正在清理，稍後再掃大檔案
 big.open|開啟位置
 big.colsize|大小
 big.colpath|路徑
@@ -1074,8 +1082,12 @@ big.scanning|Scanning…
 big.idle|Not scanned yet. Click ""Scan large files"" to list the biggest files.
 big.none|No files larger than {0}. Try a lower threshold.
 big.progress|Scanning… {0:N0} files checked, {1} found
-big.done|Checked {0:N0} files, found {1} larger than {2} (display only, nothing deleted)
+big.done|Checked {0:N0} files, found {1} larger than {2}
 big.cancel|Scan cancelled
+big.pause|Pause
+big.resume|Resume
+big.paused|Paused - {0:N0} files checked, {1} found
+big.busy|Cleanup is running, try again afterwards
 big.open|Reveal
 big.colsize|Size
 big.colpath|Path

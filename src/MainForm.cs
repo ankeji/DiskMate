@@ -68,11 +68,21 @@ namespace DiskMate
 
         // ---- big files
         private ListView lvBig;
-        private FlatButton btnBigScan, btnBigReveal, btnBigDelete;
+        private FlatButton btnBigScan, btnBigReveal, btnBigDelete, btnBigPause;
         private Label lblBigHint;
         private Label lblBigEmpty;
         private ComboBox cmbThreshold, cmbDrive;
         private readonly List<DriveInfo> bigDrives = new List<DriveInfo>();
+
+        // 大文件扫描的实时联动状态
+        private readonly object bigGate = new object();
+        private readonly List<KeyValuePair<string, long>> bigHits = new List<KeyValuePair<string, long>>();
+        private int bigShown;              // 已经搬进列表的条数
+        private long bigScanned;           // 已检查的文件数
+        private long bigThreshold;         // 本次扫描的阈值
+        private volatile bool bigRunning;
+        private volatile bool bigPaused;
+        private System.Windows.Forms.Timer bigFlushTimer;
 
         // ---- log
         private RichTextBox txtLog;
@@ -682,7 +692,8 @@ namespace DiskMate
             if (lblEmpty != null) lblEmpty.Text = all.Count == 0 ? I18n.T("empty.none") : I18n.T("empty.filter");
             if (btnSelectLow != null) btnSelectLow.Text = I18n.T("btn.selectLow");
             if (btnSelectNone != null) btnSelectNone.Text = I18n.T("btn.selectNone");
-            if (btnBigScan != null) btnBigScan.Text = I18n.T("big.btn");
+            if (btnBigScan != null && !bigRunning) btnBigScan.Text = I18n.T("big.btn");
+            if (btnBigPause != null) btnBigPause.Text = I18n.T(bigPaused ? "big.resume" : "big.pause");
             if (lblBigHint != null && lvBig != null && lvBig.Items.Count == 0) lblBigHint.Text = I18n.T("big.idle");
             if (cmbThreshold != null) FillThresholds();
             if (lblBigEmpty != null && lblBigEmpty.Visible) lblBigEmpty.Text = I18n.T("big.idle");

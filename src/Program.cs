@@ -25,6 +25,7 @@ namespace DiskMate
             string fbPageShot = null;
             string fbDialogShot = null;
             string fbSubmitTest = null;
+            bool bigProbe = false;
             string outPath = null;
             bool featureProbe = false;
             bool announceProbe = false;
@@ -56,7 +57,15 @@ namespace DiskMate
                 else if (a.StartsWith("--feedbackpage=", StringComparison.OrdinalIgnoreCase)) fbPageShot = a.Substring("--feedbackpage=".Length);
                 else if (a.StartsWith("--feedbackdialog=", StringComparison.OrdinalIgnoreCase)) fbDialogShot = a.Substring("--feedbackdialog=".Length);
                 else if (a.StartsWith("--fbsubmit=", StringComparison.OrdinalIgnoreCase)) fbSubmitTest = a.Substring("--fbsubmit=".Length);
+                else if (string.Equals(a, "--bigprobe", StringComparison.OrdinalIgnoreCase)) bigProbe = true;
                 else if (!a.StartsWith("--")) outPath = a;
+            }
+
+            if (bigProbe)
+            {
+                UpdateService.Disabled = true;
+                RunBigScanProbe();
+                return;
             }
 
             if (fbSubmitTest != null)
@@ -308,6 +317,56 @@ namespace DiskMate
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
         /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        /// <summary>调试用：跑一次大文件扫描，验证「边扫边出 / 暂停 / 继续」</summary>
+        private static void RunBigScanProbe()
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            Announcement.Suppressed = true;
+            try
+            {
+                using (var form = new MainForm())
+                {
+                    form.Show();
+                    form.TestBigScanStart();
+                    Console.WriteLine("[0s ] " + form.TestBigState());
+
+                    Pump(3000);
+                    Console.WriteLine("[3s ] " + form.TestBigState());
+
+                    form.TestBigTogglePause();
+                    Console.WriteLine("[3s+] " + form.TestBigState());
+                    Pump(2000);
+                    Console.WriteLine("[5s ] " + form.TestBigState() + "   (暂停期间不应增长)");
+
+                    form.TestBigTogglePause();
+                    Console.WriteLine("[5s+] " + form.TestBigState());
+                    Pump(2000);
+                    Console.WriteLine("[7s ] " + form.TestBigState());
+
+                    form.TestBigStop();
+                    DateTime until = DateTime.Now.AddSeconds(8);
+                    while (form.TestBigRunning() && DateTime.Now < until) Pump(150);
+                    Console.WriteLine("[end] " + form.TestBigState());
+                    form.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("bigprobe failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>边抽 UI 消息边等待（后台线程的定时器要靠消息循环才会跑）</summary>
+        private static void Pump(int ms)
+        {
+            DateTime until = DateTime.Now.AddMilliseconds(ms);
+            while (DateTime.Now < until)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(30);
+            }
+        }
+
         /// <summary>调试用：走客户端同一条路径提交一条反馈（--fbsubmit=标题|内容）</summary>
         private static void RunFeedbackSubmit(string arg)
         {

@@ -601,7 +601,7 @@ namespace DiskMate
         private void BuildBigPage()
         {
             var bar = new Panel();
-            bar.Height = Theme.P(62);
+            bar.Height = Theme.P(92);
             bar.BackColor = Theme.Bg;
             pageBig.Controls.Add(bar);
 
@@ -623,21 +623,31 @@ namespace DiskMate
             btnBigScan.Click += delegate { StartBigScan(); };
             bar.Controls.Add(btnBigScan);
 
+            btnBigPause = new FlatButton();
+            btnBigPause.Kind = BtnKind.Secondary;
+            Txt(btnBigPause, "big.pause");
+            btnBigPause.Size = new Size(Theme.P(100), Theme.P(38));
+            btnBigPause.Location = new Point(Theme.P(284), Theme.P(10));
+            btnBigPause.Enabled = false;
+            btnBigPause.Click += delegate { ToggleBigPause(); };
+            bar.Controls.Add(btnBigPause);
+
             cmbThreshold = new ComboBox();
             cmbThreshold.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbThreshold.FlatStyle = FlatStyle.Flat;
             cmbThreshold.Font = Theme.Base;
             cmbThreshold.ItemHeight = Theme.P(22);
             cmbThreshold.Size = new Size(Theme.P(130), Theme.P(30));
-            cmbThreshold.Location = new Point(Theme.P(288), Theme.P(14));
+            cmbThreshold.Location = new Point(Theme.P(392), Theme.P(14));
             FillThresholds();   // 内部会填选项并选中默认项（200 MB）
             bar.Controls.Add(cmbThreshold);
 
             lblBigHint = new Label();
             lblBigHint.AutoSize = false;
             lblBigHint.AutoEllipsis = true;   // 窗口变窄时不硬挤，末尾省略
-            lblBigHint.Location = new Point(Theme.P(432), Theme.P(14));
-            lblBigHint.Size = new Size(Theme.P(380), Theme.P(30));
+            lblBigHint.Location = new Point(Theme.P(2), Theme.P(56));
+            lblBigHint.Size = new Size(Theme.P(600), Theme.P(28));
+            lblBigHint.Font = Theme.Small;
             lblBigHint.ForeColor = Theme.TextSub;
             Txt(lblBigHint, "big.idle");
             bar.Controls.Add(lblBigHint);
@@ -666,7 +676,7 @@ namespace DiskMate
             {
                 btnBigReveal.Location = new Point(bar.Width - btnBigReveal.Width, Theme.P(12));
                 btnBigDelete.Location = new Point(btnBigReveal.Left - Theme.P(8) - btnBigDelete.Width, Theme.P(12));
-                lblBigHint.Width = Math.Max(Theme.P(100), btnBigDelete.Left - Theme.P(16) - lblBigHint.Left);
+                lblBigHint.Width = Math.Max(Theme.P(160), bar.Width - Theme.P(8) - lblBigHint.Left);
             };
 
             var card = new CardPanel();
@@ -721,73 +731,110 @@ namespace DiskMate
 
             pageBig.Resize += delegate
             {
-                bar.SetBounds(Theme.P(0), Theme.P(0), pageBig.Width, Theme.P(62));
-                card.SetBounds(Theme.P(0), Theme.P(62), pageBig.Width, Math.Max(Theme.P(120), pageBig.Height - Theme.P(62)));
+                bar.SetBounds(Theme.P(0), Theme.P(0), pageBig.Width, Theme.P(92));
+                card.SetBounds(Theme.P(0), Theme.P(92), pageBig.Width, Math.Max(Theme.P(120), pageBig.Height - Theme.P(92)));
             };
         }
 
         private void StartBigScan()
         {
-            if (busy) return;
+            if (busy)
+            {
+                ShowBanner(BannerKind.Info, I18n.T("big.busy"), 4);
+                return;
+            }
             if (!RequireLogin(FeatureGate.Big)) return;
+
             busy = true;
+            bigRunning = true;
+            bigPaused = false;
             scanCancel = false;
-            btnBigScan.Enabled = false;
-            btnBigScan.Text = I18n.T("big.scanning");
-            btnBigScan.Invalidate();
-            lblBigHint.Text = I18n.T("big.scanning");
+            bigThreshold = BigThresholds[Math.Max(0, Math.Min(cmbThreshold.SelectedIndex, BigThresholds.Length - 1))];
+            bigScanned = 0;
+            bigShown = 0;
+            lock (bigGate) { bigHits.Clear(); }
+
+            lvBig.BeginUpdate();
+            lvBig.Items.Clear();
+            lvBig.EndUpdate();
             if (lblBigEmpty != null) lblBigEmpty.Visible = false;
-            long threshold = BigThresholds[Math.Max(0, cmbThreshold.SelectedIndex)];
+
+            btnBigScan.Enabled = false;
+            Txt(btnBigScan, "big.scanning");
+            btnBigScan.Invalidate();
+
+            btnBigPause.Enabled = true;
+            btnBigPause.Text = I18n.T("big.pause");
+            btnBigPause.Invalidate();
+
+            cmbDrive.Enabled = false;
+            cmbThreshold.Enabled = false;
+            lblBigHint.Text = I18n.F("big.progress", 0, 0);
+            UpdateBigButtons();
+
+            StartBigFlushTimer();
+
+            // 扫描哪个盘由下拉框决定（默认 C 盘）
+            string driveRoot = null;
+            int di = cmbDrive == null ? -1 : cmbDrive.SelectedIndex;
+            if (di >= 0 && di < bigDrives.Count) driveRoot = bigDrives[di].RootDirectory.FullName;
+            if (string.IsNullOrEmpty(driveRoot)) driveRoot = "C:////";
 
             Task.Factory.StartNew(delegate
             {
-                var result = new List<KeyValuePair<string, long>>();
-                var roots = new List<string>();
-
-                // 扫描哪个盘由下拉框决定（默认 C 盘）
-                string driveRoot = null;
-                int di = cmbDrive == null ? -1 : cmbDrive.SelectedIndex;
-                if (di >= 0 && di < bigDrives.Count) driveRoot = bigDrives[di].RootDirectory.FullName;
-                if (string.IsNullOrEmpty(driveRoot)) driveRoot = "C:\\";
-                roots.Add(driveRoot);
-
                 var stack = new Stack<string>();
-                foreach (string r in roots) if (Directory.Exists(r)) stack.Push(r);
-                long scanned = 0;
-                long reportAt = 0;
+                if (Directory.Exists(driveRoot)) stack.Push(driveRoot);
 
                 while (stack.Count > 0)
                 {
                     if (scanCancel) break;
+
+                    // 暂停：原地等着，不退出，点「继续」接着扫
+                    while (bigPaused && !scanCancel)
+                    {
+                        try { System.Threading.Thread.Sleep(120); } catch { }
+                    }
+
                     string dir = stack.Pop();
+
                     try
                     {
+                        int fileTick = 0;
                         foreach (string f in Directory.EnumerateFiles(dir))
                         {
+                            // 大目录里也要能及时响应「暂停」和「停止」，每 64 个文件看一下标志位
+                            if ((++fileTick & 63) == 0)
+                            {
+                                if (scanCancel) break;
+                                while (bigPaused && !scanCancel)
+                                {
+                                    try { System.Threading.Thread.Sleep(120); } catch { }
+                                }
+                            }
                             try
                             {
                                 var fi = new FileInfo(f);
-                                scanned++;
-                                if (fi.Length > threshold) result.Add(new KeyValuePair<string, long>(f, fi.Length));
+                                System.Threading.Interlocked.Increment(ref bigScanned);
+                                if (fi.Length > bigThreshold)
+                                {
+                                    // 命中就塞进共享队列，UI 定时器每 200ms 搬一批到列表
+                                    lock (bigGate) bigHits.Add(new KeyValuePair<string, long>(f, fi.Length));
+                                }
                             }
                             catch { }
                         }
                     }
                     catch { }
-                    if (++reportAt % 40 == 0)
-                    {
-                        long n = scanned;
-                        Ui(delegate { lblBigHint.Text = I18n.F("big.progress", n, result.Count); });
-                    }
+
                     try
                     {
                         foreach (string d in Directory.EnumerateDirectories(dir))
                         {
                             try
                             {
-                                var di2 = new DirectoryInfo(d);
-                                if ((di2.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                                if (SkipBigDir(di2.Name)) continue;
+                                var dirInfo = new DirectoryInfo(d);
+                                if ((dirInfo.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                                if (SkipBigDir(dirInfo.Name)) continue;
                                 stack.Push(d);
                             }
                             catch { }
@@ -796,34 +843,176 @@ namespace DiskMate
                     catch { }
                 }
 
-                result.Sort(delegate(KeyValuePair<string, long> a, KeyValuePair<string, long> b) { return b.Value.CompareTo(a.Value); });
-
-                Ui(delegate
-                {
-                    lvBig.BeginUpdate();
-                    lvBig.Items.Clear();
-                    foreach (KeyValuePair<string, long> kv in result)
-                        lvBig.Items.Add(new ListViewItem(new[] { Theme.Fmt(kv.Value), kv.Key }));
-                    lvBig.EndUpdate();
-                    lblBigHint.Text = scanCancel
-                        ? I18n.T("big.cancel")
-                        : I18n.F("big.done", scanned, result.Count, Theme.Fmt(threshold));
-                    Log(string.Format("大文件扫描：{0} 个命中", result.Count));
-                    if (!scanCancel) Session.PingActivity("bigscan");   // 用了一次大文件扫描，记一次活跃
-                    busy = false;
-                    btnBigScan.Enabled = true;
-                    Txt(btnBigScan, "big.btn");
-                    btnBigScan.Invalidate();
-                    if (lblBigEmpty != null)
-                    {
-                        bool empty = lvBig.Items.Count == 0;
-                        lblBigEmpty.Visible = empty;
-                        if (empty) lblBigEmpty.Text = I18n.F("big.none", Theme.Fmt(threshold));
-                    }
-                    if (lvBig.Items.Count > 0) { lvBig.Items[0].Selected = true; lvBig.Items[0].Focused = true; }
-                    UpdateBigButtons();
-                });
+                Ui(delegate { FinishBigScan(); });
             }, TaskCreationOptions.LongRunning);
+        }
+
+        private const int BigMaxRows = 2000;
+
+        private void StartBigFlushTimer()
+        {
+            if (bigFlushTimer == null)
+            {
+                bigFlushTimer = new System.Windows.Forms.Timer();
+                bigFlushTimer.Interval = 200;
+                bigFlushTimer.Tick += delegate { FlushBigHits(); };
+            }
+            bigFlushTimer.Start();
+        }
+
+        private void StopBigFlushTimer()
+        {
+            if (bigFlushTimer != null) bigFlushTimer.Stop();
+        }
+
+        /// <summary>把后台扫到的结果搬到列表：按大小降序插到对应位置，边扫边出。</summary>
+        private void FlushBigHits()
+        {
+            List<KeyValuePair<string, long>> fresh = null;
+            lock (bigGate)
+            {
+                if (bigShown < bigHits.Count)
+                {
+                    fresh = bigHits.GetRange(bigShown, bigHits.Count - bigShown);
+                    bigShown = bigHits.Count;
+                }
+            }
+            if (fresh != null && fresh.Count > 0) InsertBigRows(fresh);
+
+            if (bigRunning && lblBigHint != null)
+            {
+                long scanned = System.Threading.Interlocked.Read(ref bigScanned);
+                lblBigHint.Text = bigPaused
+                    ? I18n.F("big.paused", scanned, lvBig.Items.Count)
+                    : I18n.F("big.progress", scanned, lvBig.Items.Count);
+            }
+        }
+
+        private void InsertBigRows(List<KeyValuePair<string, long>> rows)
+        {
+            lvBig.BeginUpdate();
+            try
+            {
+                foreach (KeyValuePair<string, long> kv in rows)
+                {
+                    if (lvBig.Items.Count >= BigMaxRows) break;
+                    var it = new ListViewItem(new[] { Theme.Fmt(kv.Value), kv.Key });
+                    it.Tag = kv.Value;
+                    lvBig.Items.Insert(FindBigInsertIndex(kv.Value), it);
+                }
+            }
+            finally { lvBig.EndUpdate(); }
+        }
+
+        /// <summary>列表始终按大小降序，二分找插入点</summary>
+        private int FindBigInsertIndex(long size)
+        {
+            int lo = 0, hi = lvBig.Items.Count;
+            while (lo < hi)
+            {
+                int mid = (lo + hi) / 2;
+                object tag = lvBig.Items[mid].Tag;
+                long v = tag is long ? (long)tag : 0;
+                if (v >= size) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo;
+        }
+
+        /// <summary>暂停 / 继续</summary>
+        private void ToggleBigPause()
+        {
+            if (!bigRunning) return;
+            bigPaused = !bigPaused;
+            btnBigPause.Text = I18n.T(bigPaused ? "big.resume" : "big.pause");
+            btnBigPause.Invalidate();
+
+            long scanned = System.Threading.Interlocked.Read(ref bigScanned);
+            lblBigHint.Text = bigPaused
+                ? I18n.F("big.paused", scanned, lvBig.Items.Count)
+                : I18n.F("big.progress", scanned, lvBig.Items.Count);
+        }
+
+        /// <summary>扫描结束（正常结束或取消）：收尾按钮、提示与空状态</summary>
+        private void FinishBigScan()
+        {
+            StopBigFlushTimer();
+            FlushBigHits();
+
+            bigRunning = false;
+            bigPaused = false;
+            busy = false;
+            scanCancel = false;
+
+            btnBigScan.Enabled = true;
+            Txt(btnBigScan, "big.btn");
+            btnBigScan.Invalidate();
+
+            btnBigPause.Enabled = false;
+            btnBigPause.Text = I18n.T("big.pause");
+            btnBigPause.Invalidate();
+
+            cmbDrive.Enabled = true;
+            cmbThreshold.Enabled = true;
+
+            long scanned = System.Threading.Interlocked.Read(ref bigScanned);
+            lblBigHint.Text = I18n.F("big.done", scanned, lvBig.Items.Count, Theme.Fmt(bigThreshold));
+            Log("大文件扫描：命中 " + lvBig.Items.Count + " 个，检查 " + scanned + " 个文件");
+            Session.PingActivity("bigscan");
+
+            if (lblBigEmpty != null)
+            {
+                bool empty = lvBig.Items.Count == 0;
+                lblBigEmpty.Visible = empty;
+                if (empty) lblBigEmpty.Text = I18n.F("big.none", Theme.Fmt(bigThreshold));
+            }
+            if (lvBig.Items.Count > 0)
+            {
+                lvBig.Items[0].Selected = true;
+                lvBig.Items[0].Focused = true;
+                lvBig.EnsureVisible(0);
+            }
+            UpdateBigButtons();
+        }
+
+        // ---------------------------------------------------------- 自检/调试入口
+        /// <summary>调试用：切到大文件页并按 100MB 阈值开扫</summary>
+        public void TestBigScanStart()
+        {
+            ShowPage(1);
+            cmbThreshold.SelectedIndex = 0;
+            StartBigScan();
+        }
+
+        /// <summary>调试用：当前扫描状态一句话</summary>
+        public string TestBigState()
+        {
+            return "rows=" + lvBig.Items.Count
+                 + " scanned=" + System.Threading.Interlocked.Read(ref bigScanned)
+                 + " running=" + bigRunning
+                 + " paused=" + bigPaused
+                 + " hint=" + (lblBigHint == null ? "" : lblBigHint.Text)
+                 + " top=" + (lvBig.Items.Count > 0 ? lvBig.Items[0].SubItems[1].Text : "-")
+                 + " | drive=" + cmbDrive.Bounds + " scan=" + btnBigScan.Bounds + " pause=" + btnBigPause.Bounds
+                 + " thr=" + cmbThreshold.Bounds + " hint=" + lblBigHint.Bounds + " list=" + lvBig.Bounds;
+        }
+
+        /// <summary>调试用：暂停/继续</summary>
+        public void TestBigTogglePause()
+        {
+            ToggleBigPause();
+        }
+
+        /// <summary>调试用：取消扫描</summary>
+        public void TestBigStop()
+        {
+            scanCancel = true;
+        }
+
+        /// <summary>调试用：是否还在扫</summary>
+        public bool TestBigRunning()
+        {
+            return bigRunning;
         }
 
         /// <summary>阈值下拉：跟随语言切换重建，保留选中项</summary>
