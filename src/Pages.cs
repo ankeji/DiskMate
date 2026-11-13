@@ -1218,62 +1218,7 @@ namespace DiskMate
 
         // ============================================================ wechat page
         /// <summary>微信专清独立页面：功能未上线，先放“开发中…”占位 + 催更入口（复用问题反馈二维码弹窗）。</summary>
-        private void BuildWeChatPage()
-        {
-            pageWechat.BackColor = Theme.Bg;
-
-            var card = new CardPanel();
-            card.FillColor = Theme.Surface;
-            card.BorderColor = Theme.Border;
-            pageWechat.Controls.Add(card);
-
-            var badge = new WipBadge();
-            card.Controls.Add(badge);
-
-            var lblDev = new Label();
-            lblDev.AutoSize = false;
-            lblDev.TextAlign = ContentAlignment.MiddleCenter;
-            lblDev.Font = Theme.F(19f, FontStyle.Bold);
-            lblDev.ForeColor = Theme.Text;
-            lblDev.Text = I18n.T("wechat.wip");
-            card.Controls.Add(lblDev);
-
-            var lblDesc = new Label();
-            lblDesc.AutoSize = false;
-            lblDesc.TextAlign = ContentAlignment.MiddleCenter;
-            lblDesc.Font = Theme.Base;
-            lblDesc.ForeColor = Theme.TextSub;
-            lblDesc.Text = I18n.T("wechat.wip.sub");
-            card.Controls.Add(lblDesc);
-
-            var btnNudge = new FlatButton();
-            btnNudge.Kind = BtnKind.Primary;
-            btnNudge.Font = Theme.Base;
-            btnNudge.Text = I18n.T("wechat.nudge");
-            btnNudge.Click += delegate { ContactDialog.Show(this); };
-            card.Controls.Add(btnNudge);
-
-            Action layout = delegate
-            {
-                int w = pageWechat.Width, h = pageWechat.Height;
-                card.SetBounds(Theme.P(0), Theme.P(0), w, h);
-                int cw = card.Width;
-                int bh = badge.Height;
-                int total = bh + Theme.P(18) + Theme.P(34) + Theme.P(8) + Theme.P(44) + Theme.P(20) + Theme.P(40);
-                int top = Math.Max(Theme.P(24), (card.Height - total) / 2);
-
-                badge.Location = new Point((cw - badge.Width) / 2, top);
-                lblDev.SetBounds(Theme.P(0), badge.Bottom + Theme.P(18), cw, Theme.P(34));
-                lblDesc.SetBounds(Theme.P(0), lblDev.Bottom + Theme.P(8), cw, Theme.P(44));
-                btnNudge.Size = new Size(Theme.P(132), Theme.P(40));
-                btnNudge.Location = new Point((cw - btnNudge.Width) / 2, lblDesc.Bottom + Theme.P(20));
-            };
-
-            pageWechat.Resize += delegate { layout(); };
-            layout();
-        }
-
-        /// <summary>自检用：切到微信专清页（占位页）</summary>
+        /// <summary>自检用：切到微信专清页</summary>
         public void TestShowWeChat()
         {
             ShowPage(3);

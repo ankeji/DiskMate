@@ -705,6 +705,26 @@ namespace DiskMate
                 lvFb.Columns[3].Text = I18n.T("fb.col.time");
             }
             if (lblFbEmpty != null) lblFbEmpty.Text = I18n.T("fb.empty");
+
+            // 微信专清页
+            if (lvWc != null && lvWc.Columns.Count >= 4)
+            {
+                lvWc.Columns[0].Text = I18n.T("wechat.col.cat");
+                lvWc.Columns[1].Text = I18n.T("wechat.col.count");
+                lvWc.Columns[2].Text = I18n.T("wechat.col.size");
+                lvWc.Columns[3].Text = I18n.T("wechat.col.note");
+                foreach (ListViewItem it in lvWc.Items)
+                {
+                    string key = it.Tag as string;
+                    if (string.IsNullOrEmpty(key)) continue;
+                    it.Text = I18n.T("wechat.cat." + key);
+                    it.SubItems[3].Text = I18n.T("wechat.cat." + key + ".sub");
+                }
+                RefreshWeChatRows();
+            }
+            if (btnWcScan != null && !wcBusy) btnWcScan.Text = I18n.T("wechat.scan");
+            if (lblWcEmpty != null) lblWcEmpty.Text = I18n.T("wechat.empty");
+            RefreshWcPath();
             if (lblFbHint != null && lvFb != null) lblFbHint.Text = I18n.F("fb.count", lvFb.Items.Count);
             if (lvFb != null && lvFb.Items.Count > 0) FillFbList(FeedbackService.Cached);
             UpdateAdminChip();

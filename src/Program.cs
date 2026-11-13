@@ -19,6 +19,9 @@ namespace DiskMate
             string donateTest = null;
             string contactTest = null;
             string wechatTest = null;
+            bool wechatProbe = false;
+            string wechatProbeRoot = null;
+            string wcCleanKey = null;
             string authTest = null;
             string accountTest = null;
             string announceTest = null;
@@ -50,7 +53,10 @@ namespace DiskMate
                 else if (a.StartsWith("--writeversion=", StringComparison.OrdinalIgnoreCase)) writeVersion = a.Substring("--writeversion=".Length);
                 else if (a.StartsWith("--donatedialog=", StringComparison.OrdinalIgnoreCase)) donateTest = a.Substring("--donatedialog=".Length);
                 else if (a.StartsWith("--contactdialog=", StringComparison.OrdinalIgnoreCase)) contactTest = a.Substring("--contactdialog=".Length);
-                else if (a.StartsWith("--wechatdialog=", StringComparison.OrdinalIgnoreCase)) wechatTest = a.Substring("--wechatdialog=".Length);
+                else if (a.StartsWith("--wechatpage=", StringComparison.OrdinalIgnoreCase)) wechatTest = a.Substring("--wechatpage=".Length);
+                else if (a.StartsWith("--wechatprobe=", StringComparison.OrdinalIgnoreCase)) { wechatProbe = true; wechatProbeRoot = a.Substring("--wechatprobe=".Length); }
+                else if (string.Equals(a, "--wechatprobe", StringComparison.OrdinalIgnoreCase)) wechatProbe = true;
+                else if (a.StartsWith("--wcclean=", StringComparison.OrdinalIgnoreCase)) wcCleanKey = a.Substring("--wcclean=".Length);
                 else if (a.StartsWith("--authtest=", StringComparison.OrdinalIgnoreCase)) authTest = a.Substring("--authtest=".Length);
                 else if (a.StartsWith("--accountdialog=", StringComparison.OrdinalIgnoreCase)) accountTest = a.Substring("--accountdialog=".Length);
                 else if (a.StartsWith("--announcedialog=", StringComparison.OrdinalIgnoreCase)) announceTest = a.Substring("--announcedialog=".Length);
@@ -221,13 +227,19 @@ namespace DiskMate
                 Console.WriteLine("contact dialog rendered: " + ct[0] + "  lang=" + I18n.Lang);
                 return;
             }
+            if (wechatProbe)
+            {
+                UpdateService.Disabled = true;
+                RunWeChatProbe(wechatProbeRoot, wcCleanKey);
+                return;
+            }
+
             if (wechatTest != null)
             {
                 try { Native.AttachConsole(-1); } catch { }
                 string[] wt = wechatTest.Split('|');
                 if (wt.Length > 1) I18n.Lang = wt[1];
-                WeChatDialog.RenderTo(wt[0]);
-                Console.WriteLine("wechat dialog rendered: " + wt[0] + "  lang=" + I18n.Lang);
+                RenderWeChatPage(wt[0]);
                 return;
             }
             if (authTest != null)
@@ -317,6 +329,76 @@ namespace DiskMate
         /// 用法：DiskMate.exe --announceprobe（结果同时写到 diskmate-announceprobe.txt）
         /// </summary>
         /// <summary>开发用：切到问题反馈页并截图（--feedbackpage=out.png），连本地后端时能看到真实列表</summary>
+        /// <summary>调试用：渲染微信专清页（--wechatpage=out.png）</summary>
+        private static void RenderWeChatPage(string path)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            Announcement.Suppressed = true;
+            try
+            {
+                using (var form = new MainForm())
+                {
+                    form.Show();
+                    form.TestShowWeChat();
+                    Pump(1200);
+                    form.Refresh();
+                    Application.DoEvents();
+                    Console.Write(form.DescribeWeChatLayout());
+                    using (var bmp = new Bitmap(form.Width, form.Height))
+                    {
+                        form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
+                        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    form.Close();
+                }
+                Console.WriteLine("ok");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("render failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 调试用：对微信目录跑一次扫描，验证四类统计。
+        /// 用法：DiskMate.exe --wechatprobe[=目录]（不传目录就用自动检测到的）
+        /// </summary>
+        private static void RunWeChatProbe(string rootHint, string cleanKey)
+        {
+            try { Native.AttachConsole(-1); } catch { }
+            Announcement.Suppressed = true;
+            try
+            {
+                using (var form = new MainForm())
+                {
+                    form.Show();
+                    form.TestShowWeChat();
+                    Pump(300);
+
+                    if (!string.IsNullOrEmpty(rootHint)) form.TestSetWeChatRoot(rootHint);
+
+                    Console.WriteLine("[before] " + form.TestWeChatState());
+                    form.TestScanWeChat();
+
+                    DateTime until = DateTime.Now.AddSeconds(90);
+                    while (form.TestWeChatBusy() && DateTime.Now < until) Pump(200);
+                    Console.WriteLine("[after ] " + form.TestWeChatState());
+
+                    if (!string.IsNullOrEmpty(cleanKey))
+                    {
+                        long freed = form.TestCleanWeChat(cleanKey);
+                        Console.WriteLine("[clean ] key=" + cleanKey + " freed=" + Theme.Fmt(freed));
+                        Console.WriteLine("[state ] " + form.TestWeChatState());
+                    }
+                    form.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("wechatprobe failed: " + ex.Message);
+            }
+        }
+
         /// <summary>调试用：跑一次大文件扫描，验证「边扫边出 / 暂停 / 继续」</summary>
         private static void RunBigScanProbe()
         {
