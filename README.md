@@ -254,6 +254,7 @@ api=https://c.softinstall.top
 
 ```
 DiskMate.exe --buildinfo                 打印版本 / 通道 / 后端地址
+DiskMate.exe --announceprobe             打印公告 id / 更新时间 / 本地已读 / 这次会不会弹
 DiskMate.exe --authtest=邮箱|密码        真的走一遍 HTTP：验证码 → 登录 → /me → 刷新令牌
 DiskMate.exe --accountdialog=out.png|register   渲染账号弹窗（login / register / logged）
 ```
