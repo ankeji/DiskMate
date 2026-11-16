@@ -246,7 +246,7 @@ api.base=http://192.168.1.10:8099
 
 ```
 DiskMate.exe --buildinfo
-version=1.1.0
+version=1.1.1
 channel=prod
 api=https://c.softinstall.top
 ```
@@ -415,6 +415,15 @@ case "mycache":
 - 更新只覆盖 exe 本体，`settings.ini` / 日志 / 用户数据都保留
 
 ## 十四、更新日志
+
+### v1.1.1（2026-11-16）
+
+- 注册页「邮箱验证码」右侧常驻提示：**收不到？看下垃圾邮件**（英文 `Check your spam folder`，繁体同步）
+- 点「获取验证码」成功后的提示补充「没收到？检查垃圾邮件 / 广告邮件文件夹」
+- 验证码邮件改为**中英双语**（主题 `DiskMate 邮箱验证码 / Your DiskMate verification code`），验证码数字最显眼；邮件带回信地址（服务端同步上线）
+- 这一版只改善注册体验，不改清理逻辑；清理体检 / 微信专清 / 大文件行为与 1.1.0 完全一致
+
+完整说明见 [docs/release-notes-v1.1.1.md](docs/release-notes-v1.1.1.md)。
 
 ### v1.1.0（2026-11-13）
 
