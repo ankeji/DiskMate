@@ -832,6 +832,7 @@ account.sendcode|获取验证码
 account.resend|重新获取({0}s)
 account.mailcode|邮箱验证码
 account.mailcode.ph|6 位数字
+account.mailcode.hint|收不到？看下垃圾邮件
 account.pass.ph|至少 8 位，含字母和数字
 account.signup|注册并登录
 account.logged|当前登录账号
@@ -1038,6 +1039,7 @@ account.sendcode|取得驗證碼
 account.resend|重新取得({0}s)
 account.mailcode|信箱驗證碼
 account.mailcode.ph|6 位數字
+account.mailcode.hint|收不到？檢查垃圾郵件
 account.pass.ph|至少 8 位，含字母和數字
 account.signup|註冊並登入
 account.logged|目前登入帳號
@@ -1244,6 +1246,7 @@ account.sendcode|Send code
 account.resend|Resend({0}s)
 account.mailcode|Email code
 account.mailcode.ph|6 digits
+account.mailcode.hint|Check your spam folder
 account.pass.ph|8+ chars with letters and digits
 account.signup|Sign up & sign in
 account.logged|Signed in as

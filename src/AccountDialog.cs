@@ -125,6 +125,8 @@ namespace DiskMate
         private ComboBox rgIdentity;
         private FlatButton rgSendCode, rgSubmit;
         private Label rgEmailLbl, rgNickLbl, rgIdLbl, rgMailLbl, rgPassLbl;
+        /// <summary>验证码那一行右侧的小字提示（垃圾邮件），常驻显示</summary>
+        private Label rgMailHint;
 
         // 图形验证码：平时隐藏，服务端判定“发码过于频繁/登录失败过多”时才显示
         private Panel lgCapRow, rgCapRow;
@@ -358,6 +360,16 @@ namespace DiskMate
             rgMailCode.Bounds = new Rectangle(Theme.P(30), Theme.P(144), W - Theme.P(60), Theme.P(38));
             registerPanel.Controls.Add(rgMailCode);
 
+            // 3.1) 右侧小字提示：验证码可能被邮箱判成垃圾邮件（海外用户尤其常见）
+            rgMailHint = new Label();
+            rgMailHint.AutoSize = false;
+            rgMailHint.TextAlign = ContentAlignment.MiddleRight;
+            rgMailHint.Font = Theme.Small;
+            rgMailHint.ForeColor = Theme.TextFaint;
+            rgMailHint.Text = I18n.T("account.mailcode.hint");
+            rgMailHint.Bounds = new Rectangle(W - Theme.P(30) - Theme.P(240), Theme.P(124), Theme.P(240), Theme.P(18));
+            registerPanel.Controls.Add(rgMailHint);
+
             // 4) 密码
             rgPassLbl = SectionLabel(I18n.T("account.password"), Theme.P(192));
             registerPanel.Controls.Add(rgPassLbl);
@@ -404,6 +416,7 @@ namespace DiskMate
             rgIdentity.SetBounds(Theme.P(30) + half + Theme.P(12), Theme.P(86 + dy), half, Theme.P(30));
 
             rgMailLbl.Top = Theme.P(124 + dy);
+            if (rgMailHint != null) rgMailHint.Top = Theme.P(124 + dy);
             rgMailCode.SetBounds(Theme.P(30), Theme.P(144 + dy), W - Theme.P(60), Theme.P(38));
 
             rgPassLbl.Top = Theme.P(192 + dy);
@@ -584,7 +597,7 @@ namespace DiskMate
                     string dev = r.DataStr("devCode");
                     SetStatus(dev.Length > 0
                         ? "开发模式验证码：" + dev + "（服务端未配置 SMTP 授权码，已写入 var/outbox）"
-                        : "验证码已发送，请查收邮箱（10 分钟内有效）", false);
+                        : "验证码已发送，请查收邮箱（10 分钟内有效）。\n没收到？检查垃圾邮件 / 广告邮件文件夹。", false);
                     rgSubmit.Enabled = true;
                     busy = false;
                     lgSubmit.Enabled = true;
