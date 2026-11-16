@@ -246,7 +246,7 @@ api.base=http://192.168.1.10:8099
 
 ```
 DiskMate.exe --buildinfo
-version=1.1.1
+version=1.1.2
 channel=prod
 api=https://c.softinstall.top
 ```
@@ -415,6 +415,15 @@ case "mycache":
 - 更新只覆盖 exe 本体，`settings.ini` / 日志 / 用户数据都保留
 
 ## 十四、更新日志
+
+### v1.1.2（2026-11-16）
+
+- **界面语言跟随系统**：中文系统按简体 / 繁体打开，其它系统默认英文；手动选过的语言始终优先
+- 修复英文界面的按钮文字截断（底部三个按钮宽度按语言自适应）与中文残留（指标卡、详情卡说明、登录入口）
+- 英文文案微调，风险徽标改单词（Low / Medium / High）
+- 自检支持中英两种界面分别验证布局，均为零问题
+
+完整说明见 [docs/release-notes-v1.1.2.md](docs/release-notes-v1.1.2.md)。
 
 ### v1.1.1（2026-11-16）
 

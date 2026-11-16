@@ -12,7 +12,7 @@ namespace DiskMate
         [STAThread]
         public static void Main(string[] args)
         {
-            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false, cleanProbe = false, maskProbe = false;
+            bool selfTest = false, makeIcon = false, langTest = false, checkUpdate = false, updateTest = false, cleanProbe = false, maskProbe = false, langProbe = false;
             string installTest = null;
             string dialogTest = null;
             string writeVersion = null;
@@ -49,6 +49,8 @@ namespace DiskMate
                 else if (string.Equals(a, "--announceprobe", StringComparison.OrdinalIgnoreCase)) announceProbe = true;
                 else if (string.Equals(a, "--makeicon", StringComparison.OrdinalIgnoreCase)) makeIcon = true;
                 else if (string.Equals(a, "--langtest", StringComparison.OrdinalIgnoreCase)) langTest = true;
+                else if (string.Equals(a, "--langprobe", StringComparison.OrdinalIgnoreCase)) langProbe = true;
+                else if (a.StartsWith("--lang=", StringComparison.OrdinalIgnoreCase)) I18n.ForceLang(a.Substring("--lang=".Length));
                 else if (string.Equals(a, "--checkupdate", StringComparison.OrdinalIgnoreCase)) checkUpdate = true;
                 else if (string.Equals(a, "--updatetest", StringComparison.OrdinalIgnoreCase)) updateTest = true;
                 else if (a.StartsWith("--installtest=", StringComparison.OrdinalIgnoreCase)) installTest = a.Substring("--installtest=".Length);
@@ -158,6 +160,30 @@ namespace DiskMate
                 string target = outPath != null ? outPath : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
                 Logo.SaveIco(target);
                 Console.WriteLine("icon written: " + target + "  " + new FileInfo(target).Length + " bytes");
+                return;
+            }
+
+            if (langProbe)
+            {
+                try { Native.AttachConsole(-1); } catch { }
+                Console.WriteLine("system ui culture : " + System.Globalization.CultureInfo.CurrentUICulture.Name);
+                Console.WriteLine("system default    : " + I18n.SystemDefault());
+                Console.WriteLine("--- culture -> ui language ---");
+                string[] samples = { "zh-CN", "zh-SG", "zh-TW", "zh-HK", "zh-MO", "zh-Hans-CN", "zh-Hant-TW",
+                                     "en-US", "en-GB", "ja-JP", "ko-KR", "de-DE", "fr-FR", "ru-RU", "ar-SA", "" };
+                foreach (string s in samples)
+                {
+                    System.Globalization.CultureInfo ci = null;
+                    try
+                    {
+                        ci = s.Length == 0
+                            ? System.Globalization.CultureInfo.InvariantCulture
+                            : System.Globalization.CultureInfo.GetCultureInfo(s);
+                    }
+                    catch { }
+                    string label = s.Length == 0 ? "(invariant)" : s;
+                    Console.WriteLine("  " + label.PadRight(12) + " -> " + I18n.FromCulture(ci));
+                }
                 return;
             }
 

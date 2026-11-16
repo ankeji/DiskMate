@@ -250,7 +250,7 @@ namespace DiskMate
             TextRenderer.DrawText(g, Sub, Theme.Small, new Rectangle(20, Height - 30, Width - 34, 18), Theme.TextFaint, Theme.LeftMid);
 
             if (Selected)
-                TextRenderer.DrawText(g, "筛选中", Theme.Small, new Rectangle(0, 16, Width - 18, 20), Accent, Theme.RightMid);
+                TextRenderer.DrawText(g, I18n.T("stat.filtering"), Theme.Small, new Rectangle(0, 16, Width - 18, 20), Accent, Theme.RightMid);
         }
     }
 

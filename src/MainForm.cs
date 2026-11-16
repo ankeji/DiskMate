@@ -33,6 +33,7 @@ namespace DiskMate
 
         // ---- pages
         private Panel pageClean, pageBig, pageLog, pageWechat;
+        private Panel resultsBar;   // 结果页底部操作条，语言切换后按钮要按文本重排
 
         // ---- clean page: welcome
         private Panel pageWelcome;
@@ -250,7 +251,7 @@ namespace DiskMate
             btnAccount.Kind = BtnKind.Ghost;
             btnAccount.Size = new Size(Theme.P(184), Theme.P(26));
             btnAccount.Font = Theme.Small;
-            btnAccount.Text = "登录 / 注册";
+            btnAccount.Text = I18n.T("account.entry");
             btnAccount.Click += delegate { OpenAccount(); };
             sidebar.Controls.Add(btnAccount);
 
@@ -526,7 +527,7 @@ namespace DiskMate
         private void UpdateAccountButton()
         {
             if (btnAccount == null || btnAccount.IsDisposed) return;
-            string text = Session.IsLoggedIn ? Session.Email : "登录 / 注册";
+            string text = Session.IsLoggedIn ? Session.Email : I18n.T("account.entry");
             if (text.Length > 26) text = text.Substring(0, 25) + "…";
             if (btnAccount.Text != text)
             {
@@ -692,6 +693,7 @@ namespace DiskMate
             if (navWechat != null) { navWechat.Text = I18n.T("wechat.btn"); navWechat.Invalidate(); }
             if (btnLang != null) btnLang.Text = LangText();
             UpdateButtonText();
+            FitToolbarButtons();
             if (btnDonate != null) btnDonate.Text = I18n.T("donate.btn");
             if (lblAdmin != null) lblAdmin.Text = IsAdmin() ? I18n.T("admin.yes") : I18n.T("admin.no");
             if (btnRescan != null) btnRescan.Text = I18n.T("btn.rescan");
@@ -1094,6 +1096,7 @@ namespace DiskMate
             if (it.Key == "drivers") it.Name = I18n.F("item.drivers.name", it.Count);
             else it.Name = I18n.T("item." + it.Key + ".name", it.Name);
             it.Category = I18n.T("cat." + it.CatKey, it.Category);
+            it.Note = I18n.T("item." + it.Key + ".note", it.Note);
             it.Impact = I18n.T("item." + it.Key + ".impact", it.Impact);
             it.Advice = I18n.T("item." + it.Key + ".advice", it.Advice);
         }
@@ -1356,10 +1359,10 @@ namespace DiskMate
                 bytes[it.Risk] += it.Size;
             }
             cardTotal.Value = Theme.Fmt(TotalSize());
-            cardTotal.Sub = all.Count + " 个清理项";
-            cardLow.Value = Theme.Fmt(bytes[0]); cardLow.Sub = count[0] + " 项";
-            cardMid.Value = Theme.Fmt(bytes[1]); cardMid.Sub = count[1] + " 项";
-            cardHigh.Value = Theme.Fmt(bytes[2]); cardHigh.Sub = count[2] + " 项";
+            cardTotal.Sub = I18n.F("stat.items", all.Count);
+            cardLow.Value = Theme.Fmt(bytes[0]); cardLow.Sub = I18n.F("stat.count", count[0]);
+            cardMid.Value = Theme.Fmt(bytes[1]); cardMid.Sub = I18n.F("stat.count", count[1]);
+            cardHigh.Value = Theme.Fmt(bytes[2]); cardHigh.Sub = I18n.F("stat.count", count[2]);
             cardTotal.Invalidate(); cardLow.Invalidate(); cardMid.Invalidate(); cardHigh.Invalidate();
         }
 
@@ -1376,6 +1379,7 @@ namespace DiskMate
             lblSelected.Text = n == 0 ? I18n.T("sel.none") : I18n.F("sel.some", n, Theme.Fmt(size));
             btnCleanNow.Enabled = n > 0 && !busy;
             btnCleanNow.Text = n == 0 ? I18n.T("btn.clean") : I18n.F("btn.cleanN", Theme.Fmt(size));
+            FitToolbarButtons();
             btnCleanNow.Invalidate();
         }
 

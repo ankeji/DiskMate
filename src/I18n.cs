@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -12,6 +13,19 @@ namespace DiskMate
     internal static class I18n
     {
         public static string Lang = "zh-CN";
+
+        /// <summary>
+        /// 命令行强制语言（--lang=xx-XX），只用于截图与自测，真实用户不会走到这里。
+        /// </summary>
+        public static string Forced = null;
+
+        /// <summary>给命令行探针用：立刻生效，且让 LoadSaved 不要覆盖它。</summary>
+        public static void ForceLang(string code)
+        {
+            Forced = code;
+            if (!string.IsNullOrEmpty(code) && Array.IndexOf(order, code) >= 0) Lang = code;
+        }
+
         public static event EventHandler Changed;
 
         private static Dictionary<string, Dictionary<string, string>> data;
@@ -499,7 +513,7 @@ namespace DiskMate
                 { "en-US", "wechat.delOk", "Move to Recycle Bin" },
                 { "en-US", "wechat.empty", "Not scanned yet: pick your WeChat folder, then hit Scan" },
                 { "en-US", "login.required", "Sign in to use this feature" },
-                { "en-US", "page.wechat.sub", "Dedicated page: scans WeChat cache usage and removes only regenerable files; chat history is never touched" },
+                { "en-US", "page.wechat.sub", "Scans WeChat cache by category. Chat history is never touched" },
                 { "en-US", "wechat.wip", "In development…" },
                 { "en-US", "wechat.wip.sub", "WeChat Cleanup is still being built and will land right here. Want it sooner? Hit the button below to nudge us." },
                 { "en-US", "wechat.nudge", "Nudge us" }
@@ -680,7 +694,7 @@ namespace DiskMate
         public static void Set(string code)
         {
             Ensure();
-            if (Array.IndexOf(order, code) < 0) code = "zh-CN";
+            if (Array.IndexOf(order, code) < 0) code = SystemDefault();
             Lang = code;
             Save(code);
             if (Changed != null) Changed(null, EventArgs.Empty);
@@ -696,8 +710,44 @@ namespace DiskMate
             }
         }
 
+        /// <summary>
+        /// 系统语言对应的默认界面语言：中文系统按简/繁区分，其它一律英文。
+        /// 依据 CurrentUICulture（系统界面语言），拿不到时退回 CurrentCulture。
+        /// </summary>
+        public static string SystemDefault()
+        {
+            try
+            {
+                CultureInfo ci = CultureInfo.CurrentUICulture;
+                if (ci == null || string.IsNullOrEmpty(ci.Name)) ci = CultureInfo.CurrentCulture;
+                return FromCulture(ci);
+            }
+            catch { return "en-US"; }
+        }
+
+        /// <summary>任意 Culture 映射到支持的界面语言；非中文一律英文，避免半翻译界面混排。</summary>
+        internal static string FromCulture(CultureInfo ci)
+        {
+            if (ci == null) return "en-US";
+            if (!string.Equals(ci.TwoLetterISOLanguageName, "zh", StringComparison.OrdinalIgnoreCase))
+                return "en-US";
+            string name = (ci.Name ?? "").ToLowerInvariant();
+            // zh-TW / zh-HK / zh-MO / zh-Hant-* 走繁体，其余中文（zh-CN / zh-SG / zh-Hans-*）走简体
+            if (name.StartsWith("zh-tw") || name.StartsWith("zh-hk") || name.StartsWith("zh-mo") ||
+                name.IndexOf("hant", StringComparison.Ordinal) >= 0)
+                return "zh-TW";
+            return "zh-CN";
+        }
+
         public static void LoadSaved()
         {
+            // 先按系统语言给默认值：settings.ini 里存过用户的选择，则以那个为准
+            Lang = SystemDefault();
+            if (!string.IsNullOrEmpty(Forced) && Array.IndexOf(order, Forced) >= 0)
+            {
+                Lang = Forced;
+                return;
+            }
             try
             {
                 string p = SettingsPath;
@@ -709,7 +759,7 @@ namespace DiskMate
                     if (i <= 0) continue;
                     if (line.Substring(0, i).Trim() != "lang") continue;
                     string code = line.Substring(i + 1).Trim();
-                    if (Array.IndexOf(order, code) < 0) code = "zh-CN";
+                    if (Array.IndexOf(order, code) < 0) code = SystemDefault();
                     Lang = code;
                 }
             }
@@ -769,6 +819,10 @@ clean.allLow|全部为低风险项，只包含缓存与临时文件。
 clean.tip|清理过程会写入日志，可在「日志」页查看每一项的结果。
 sel.none|未勾选任何项目
 sel.some|已选 {0} 项 · {1}
+account.entry|登录 / 注册
+item.recycle.note|清空后无法恢复
+item.hiber.note|关闭后可释放，副作用是快速启动失效
+item.drivers.note|只保留最新版本，正在使用的驱动不会被删
 btn.selectLow|全选低风险
 btn.selectNone|取消全选
 btn.clean|清理选中项
@@ -795,6 +849,7 @@ stat.low|低风险
 stat.mid|中风险
 stat.high|高风险
 stat.items|{0} 个清理项
+stat.filtering|筛选中
 stat.count|{0} 项
 risk.low|低风险
 risk.mid|中风险
@@ -976,6 +1031,10 @@ clean.allLow|全部為低風險項目，只包含快取與暫存檔。
 clean.tip|清理過程會寫入日誌，可在「日誌」頁查看每一項的結果。
 sel.none|未勾選任何項目
 sel.some|已選 {0} 項 · {1}
+account.entry|登入 / 註冊
+item.recycle.note|清空後無法還原
+item.hiber.note|關閉後可釋放，副作用是快速啟動失效
+item.drivers.note|只保留最新版本，使用中的驅動程式不會被刪
 btn.selectLow|全選低風險
 btn.selectNone|取消全選
 btn.clean|清理選取項目
@@ -1002,6 +1061,7 @@ stat.low|低風險
 stat.mid|中風險
 stat.high|高風險
 stat.items|{0} 個清理項目
+stat.filtering|篩選中
 stat.count|{0} 項
 risk.low|低風險
 risk.mid|中風險
@@ -1152,8 +1212,8 @@ app.tagline|C: drive cleanup tool
 nav.clean|Scan & Clean
 nav.big|Large Files
 nav.log|Log
-page.clean.sub|Scan first, then choose what to remove. Scanning only measures size, never deletes.
-page.big.sub|Lists the biggest files on disk. Double-click to open the folder; tick items to delete them to the Recycle Bin.
+page.clean.sub|Scanning measures sizes only — it never deletes anything.
+page.big.sub|Biggest files on the chosen drive; double-click opens the folder.
 page.log.sub|Full record of every scan and cleanup, mirrored to a local log file.
 welcome.title|Scan first, decide later
 welcome.desc|A scan lists the caches, temp files and old drivers on your C: drive one by one, with a risk level and the exact consequence of deleting each one. Nothing is removed until you tick it.
@@ -1182,7 +1242,11 @@ clean.warnMid|{0} of them are medium risk: deletion has side effects. Please rea
 clean.allLow|All items are low risk: caches and temporary files only.
 clean.tip|Every step is written to the log, which you can review on the Log page.
 sel.none|Nothing selected
-sel.some|{0} selected · {1}
+sel.some|{0} chosen · {1}
+account.entry|Sign in / Sign up
+item.recycle.note|Emptying it is permanent — there is no undo
+item.hiber.note|Disabling hibernation frees the space; Fast Startup stops working
+item.drivers.note|Only older duplicates are removed; drivers in use are untouched
 btn.selectLow|Select low risk
 btn.selectNone|Clear selection
 btn.clean|Clean selected
@@ -1209,10 +1273,11 @@ stat.low|Low risk
 stat.mid|Medium risk
 stat.high|High risk
 stat.items|{0} items
+stat.filtering|Filtering
 stat.count|{0} items
-risk.low|Low risk
-risk.mid|Medium risk
-risk.high|High risk
+risk.low|Low
+risk.mid|Medium
+risk.high|High
 big.btn|Scan large files
 big.scanning|Scanning…
 big.idle|Not scanned yet. Click ""Scan large files"" to list the biggest files.

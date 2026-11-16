@@ -256,6 +256,16 @@ namespace DiskMate
         }
 
         /// <summary>工具条：搜索框 + 选中统计在左，按钮贴右；空间不足时先省略统计文字，再收窄搜索框。</summary>
+        /// <summary>底部操作条按钮宽度按当前语言文本自适应；语言切换后也要重跑（Retext 里调用）。</summary>
+        private void FitToolbarButtons()
+        {
+            if (btnSelectLow == null || btnSelectNone == null || btnCleanNow == null) return;
+            btnSelectLow.Width = Math.Max(Theme.P(84), TextRenderer.MeasureText(btnSelectLow.Text, btnSelectLow.Font).Width + Theme.P(32));
+            btnSelectNone.Width = Math.Max(Theme.P(72), TextRenderer.MeasureText(btnSelectNone.Text, btnSelectNone.Font).Width + Theme.P(32));
+            btnCleanNow.Width = Math.Max(Theme.P(120), TextRenderer.MeasureText(btnCleanNow.Text, btnCleanNow.Font).Width + Theme.P(36));
+            if (resultsBar != null) LayoutToolbar(resultsBar);
+        }
+
         private void LayoutToolbar(Panel bar)
         {
             if (bar == null || search == null || btnCleanNow == null) return;
@@ -335,6 +345,7 @@ namespace DiskMate
             bar.Height = Theme.P(60);
             bar.BackColor = Theme.Bg;
             pageResults.Controls.Add(bar);
+            resultsBar = bar;
 
             search = new SearchBox();
             search.Location = new Point(Theme.P(0), Theme.P(10));
@@ -375,6 +386,9 @@ namespace DiskMate
             bar.Controls.Add(btnCleanNow);
 
             bar.Resize += delegate { LayoutToolbar(bar); };
+
+            // 按钮宽度按当前语言文本自适应（英文比中文长，固定宽度会截断），初始也要跑一次
+            FitToolbarButtons();
 
             var body = new Panel();
             body.BackColor = Theme.Bg;
